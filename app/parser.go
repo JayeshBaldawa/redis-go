@@ -21,6 +21,7 @@ const (
 const (
 	STR_WRAPPER = "\r\n"
 	FIRST_BYTE  = "$"
+	REPLICATION = "# Replication\nrole:%s"
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 	PING_COMMAND = "ping"
 	SET_COMMAND  = "set"
 	GET_COMMAND  = "get"
+	INFO_COMMAND = "info"
 )
 
 const (
@@ -36,10 +38,6 @@ const (
 	EXAT = "exat" // Unix timestamp in seconds
 	PXAT = "pxat" // Unix timestamp in milliseconds
 )
-
-type ConnectionDetails struct {
-	inMemoryStorage *storage.InMemoryStorage
-}
 
 func encodeBulkString(resp string) string {
 	return fmt.Sprintf(FIRST_BYTE+"%d"+STR_WRAPPER+"%s"+STR_WRAPPER, len(resp), resp)
@@ -103,6 +101,8 @@ func processArrayCommand(strCommand []string, numElements int) (string, error) {
 			return encodeNullBulkString(), nil
 		}
 		return encodeBulkString(value), nil
+	case INFO_COMMAND:
+		return encodeBulkString(fmt.Sprintf(REPLICATION, redisServerConfig.serverType)), nil
 	}
 
 	return "", errors.New("command not found")

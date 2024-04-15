@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -8,15 +9,39 @@ import (
 	"strings"
 )
 
+type RedisServer struct {
+	port        int
+	replicaHost string
+	replicaPort int
+	serverType  string
+}
+
+var redisServerConfig *RedisServer
+
+func init() {
+	redisServerConfig = &RedisServer{
+		port:        6379,
+		replicaHost: "",
+		replicaPort: 0,
+		serverType:  "master",
+	}
+}
+
 func main() {
-	log.Println("INFO: Creating redis server at :6379")
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+
+	readFlagsPassed()
+
+	log.Printf("INFO: Creating redis server at : %d", redisServerConfig.port)
+
+	l, err := net.Listen("tcp", "0.0.0.0:"+fmt.Sprintf("%d", redisServerConfig.port))
 	if err != nil {
-		fmt.Println("ERROR: Failed to bind to port 6379")
+		fmt.Printf("ERROR: Failed to bind to port + %d", redisServerConfig.port)
 		os.Exit(1)
 	}
 	defer l.Close()
-	log.Println("INFO: Listening to port 6379")
+
+	log.Printf("INFO: Listening to port %d", redisServerConfig.port)
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -42,8 +67,8 @@ func handleRequest(conn net.Conn) {
 			return
 		}
 
-		// Trim trailing whitespace and convert to lowercase for case-insensitive comparison
-		command := strings.TrimSpace(strings.ToLower(string(buf[:n])))
+		// Trim trailing whitespace
+		command := strings.TrimSpace(string(buf[:n]))
 
 		if command == "exit" {
 			log.Printf("INFO: Client %s requested to exit", conn.RemoteAddr())
@@ -62,4 +87,16 @@ func handleRequest(conn net.Conn) {
 			return
 		}
 	}
+}
+
+func readFlagsPassed() {
+	port := flag.Int("port", redisServerConfig.port, "Port to run the server on")
+	replicaHost := flag.String("replicaof", "", "Host to replicate to")
+	flag.Parse()
+	if *replicaHost != "" {
+		redisServerConfig.serverType = "slave"
+	}
+	redisServerConfig.port = *port
+	redisServerConfig.replicaHost = *replicaHost
+	fmt.Println("Port: ", *port)
 }
