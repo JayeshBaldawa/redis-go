@@ -6,6 +6,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
+
+	storage "github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 const (
@@ -23,10 +26,27 @@ const (
 const (
 	ECHO_COMMAND = "echo"
 	PING_COMMAND = "ping"
+	SET_COMMAND  = "set"
+	GET_COMMAND  = "get"
 )
+
+const (
+	EX   = "ex"   // Seconds
+	PX   = "px"   // Milliseconds
+	EXAT = "exat" // Unix timestamp in seconds
+	PXAT = "pxat" // Unix timestamp in milliseconds
+)
+
+type ConnectionDetails struct {
+	inMemoryStorage *storage.InMemoryStorage
+}
 
 func encodeBulkString(resp string) string {
 	return fmt.Sprintf(FIRST_BYTE+"%d"+STR_WRAPPER+"%s"+STR_WRAPPER, len(resp), resp)
+}
+
+func encodeNullBulkString() string {
+	return "$-1" + STR_WRAPPER
 }
 
 func encodeSimpleString(resp string) string {
@@ -44,6 +64,45 @@ func processArrayCommand(strCommand []string, numElements int) (string, error) {
 		return encodeBulkString(strCommand[1]), nil
 	case PING_COMMAND:
 		return encodeSimpleString("PONG"), nil
+	case SET_COMMAND:
+		if numElements != 5 && numElements != 3 {
+			return "", errors.New("not valid format for set command")
+		}
+
+		var timeOfExpiry time.Time
+
+		if numElements == 5 {
+			// Get the expire time and type
+			expire, err := strconv.Atoi(strCommand[4])
+			if err != nil {
+				return "", errors.New("not valid format for given time")
+			}
+			// Get the time in seconds
+			timeOfExpiry = getExpiryTimeInUTC(expire, strCommand[3])
+			// Check if the time is empty
+			if timeOfExpiry.IsZero() {
+				return "", errors.New("not valid format for time type")
+			}
+		}
+
+		err := storage.GetStorage().Set(strCommand[1], strCommand[2], timeOfExpiry)
+		if err != nil {
+			return "", err
+		}
+
+		return encodeSimpleString("OK"), nil
+	case GET_COMMAND:
+		if len(strCommand) < 2 {
+			return "", errors.New("not valid format for get command")
+		}
+		value, err := storage.GetStorage().Get(strCommand[1])
+		if err != nil {
+			return "", err
+		}
+		if value == "" {
+			return encodeNullBulkString(), nil
+		}
+		return encodeBulkString(value), nil
 	}
 
 	return "", errors.New("command not found")
@@ -98,4 +157,19 @@ func handleCommand(strCommand string) string {
 	}
 
 	return resp
+}
+
+func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
+	switch strings.ToLower(Timetype) {
+	case EX:
+		return time.Now().UTC().Add(time.Duration(expire) * time.Second)
+	case PX:
+		return time.Now().UTC().Add(time.Duration(expire) * time.Millisecond)
+	case EXAT:
+		return time.Unix(int64(expire), 0).UTC()
+	case PXAT:
+		return time.Unix(0, int64(expire)*int64(time.Millisecond)).UTC()
+	default:
+		return time.Time{}
+	}
 }
