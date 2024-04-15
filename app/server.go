@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -30,22 +31,35 @@ func main() {
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
 
+	log.Printf("INFO: Accepted connection from %s", conn.RemoteAddr())
+
+	// Reading data in a loop
+	buf := make([]byte, 1024)
 	for {
-		// Reading data
-		buf := make([]byte, 1024)
-		receivedData, err := conn.Read(buf)
+		n, err := conn.Read(buf)
 		if err != nil {
-			log.Printf("ERROR: Something went wrong while reading the data: %s", err.Error())
+			log.Printf("ERROR: Failed to read from connection: %s", err.Error())
+			return
 		}
 
-		log.Printf("INFO: Received data - %d", receivedData)
+		// Trim trailing whitespace and convert to lowercase for case-insensitive comparison
+		command := strings.TrimSpace(strings.ToLower(string(buf[:n])))
 
-		// Writing Back: Assuming ping request
-		pongMsg := []byte("+PONG\r\n")
-		n, err := conn.Write(pongMsg)
-		if err != nil {
-			log.Printf("ERROR: Something went wrong while writing the data: %s", err.Error())
+		if command == "exit" {
+			log.Printf("INFO: Client %s requested to exit", conn.RemoteAddr())
+			return
 		}
-		log.Printf("INFO: Written data - %d", n)
+
+		log.Printf("INFO: Received command from %s: %s", conn.RemoteAddr(), command)
+
+		// Handle the command
+		resp := handleCommand(command)
+
+		// Write the response back to the client
+		_, err = conn.Write([]byte(resp))
+		if err != nil {
+			log.Printf("ERROR: Failed to write response to connection: %s", err.Error())
+			return
+		}
 	}
 }
