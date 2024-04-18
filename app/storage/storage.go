@@ -1,9 +1,11 @@
 package storage
 
 import (
-	"log"
+	"fmt"
 	"sync"
 	"time"
+
+	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 )
 
 type Storage interface {
@@ -52,7 +54,7 @@ func (s *InMemoryStorage) Get(key string) (string, error) {
 	expire, ok := s.dataTime.Load(key)
 	if ok {
 		if time.Now().UTC().After(expire.(time.Time)) {
-			log.Printf("Key %s has expired", key)
+			log.LogError(fmt.Errorf("key %s has expired", key))
 			s.data.Delete(key)
 			s.dataTime.Delete(key)
 			return "", nil

@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 
 	commands "github.com/codecrafters-io/redis-starter-go/app/commands"
+	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
 
@@ -18,21 +18,21 @@ func main() {
 
 	port := config.GetRedisServerConfig().GetPort()
 
-	log.Printf("INFO: Creating redis server at : %d", port)
+	log.LogInfo(fmt.Sprintf("Starting server on port %d", port))
 
 	l, err := net.Listen("tcp", "0.0.0.0:"+fmt.Sprintf("%d", port))
 	if err != nil {
-		fmt.Printf("ERROR: Failed to bind to port + %d", port)
+		log.LogError(fmt.Errorf("error starting server: %s", err.Error()))
 		os.Exit(1)
 	}
 	defer l.Close()
 
-	log.Printf("INFO: Listening to port %d", port)
+	log.LogInfo("Server started successfully")
 
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println("ERROR: Error accepting connection: ", err.Error())
+			log.LogError(fmt.Errorf("error accepting connection: %s", err.Error()))
 			os.Exit(1)
 		}
 		// Handling the received request
@@ -43,18 +43,28 @@ func main() {
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
 
-	log.Printf("INFO: Accepted connection from %s", conn.RemoteAddr())
+	log.LogInfo(fmt.Sprintf("Connection received from %q", conn.RemoteAddr()))
 
 	// Reading data in a loop
 	buf := make([]byte, 1024)
 	for {
+		// Read timeout
+		/*
+			readTimeout := time.Duration(config.GetReadTimeout()) * time.Second
+			err := conn.SetReadDeadline(time.Now().Add(readTimeout))
+			if err != nil {
+				log.LogError(fmt.Errorf("error setting read deadline: %s", err.Error()))
+				return
+			}
+		*/
+
 		n, err := conn.Read(buf)
 		if err != nil {
 			if err.Error() == "EOF" {
-				log.Printf("INFO: Client %s closed the connection", conn.RemoteAddr())
+				log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
 				return
 			}
-			log.Printf("ERROR: Failed to read from connection: %s", err.Error())
+			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
 			return
 		}
 
@@ -62,11 +72,11 @@ func handleRequest(conn net.Conn) {
 		command := strings.TrimSpace(string(buf[:n]))
 
 		if command == "exit" {
-			log.Printf("INFO: Client %s requested to exit", conn.RemoteAddr())
+			log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
 			return
 		}
 
-		log.Printf("INFO: Received command from %s: %s", conn.RemoteAddr(), command)
+		log.LogInfo(fmt.Sprintf("Received command: %q", command))
 
 		// Handle the command
 		resp := commands.HandleCommand(command)
@@ -74,7 +84,7 @@ func handleRequest(conn net.Conn) {
 		// Write the response back to the client
 		_, err = conn.Write([]byte(resp))
 		if err != nil {
-			log.Printf("ERROR: Failed to write response to connection: %s", err.Error())
+			log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
 			return
 		}
 	}
@@ -94,9 +104,9 @@ func readArgsPassed() {
 			redisServerConfig.SetReplicaHost(args[i])
 			i++
 			redisServerConfig.SetReplicaPort(getPort(args[i]))
-			fmt.Printf("INFO: Replicating to %s:%d\n", redisServerConfig.GetReplicaHost(), redisServerConfig.GetReplicaPort())
+			log.LogInfo(fmt.Sprintf("Replicating data from %s:%d", redisServerConfig.GetReplicaHost(), redisServerConfig.GetReplicaPort()))
 			if !commands.CheckConnectionWithMaster() {
-				log.Println("ERROR: Unable to connect to master server")
+				log.LogError(fmt.Errorf("failed to connect to master server"))
 				os.Exit(1)
 			}
 		}
@@ -106,7 +116,7 @@ func readArgsPassed() {
 func getPort(port string) int {
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		log.Println("ERROR: Invalid port number")
+		log.LogError(fmt.Errorf("invalid port number: %s", port))
 		os.Exit(1)
 	}
 	return portInt

@@ -3,11 +3,11 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
 
+	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
 	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
@@ -42,12 +42,12 @@ func HandleCommand(strCommand string) string {
 	case parserModel.ARRAYS:
 		resp, err = processArrayCommand(parserObj, splittedCommand)
 	default:
-		fmt.Printf("Command not found: %s\n", strCommand)
+		log.LogError(errors.New("invalid command"))
 		return encodeSimpleString("PONG")
 	}
 
 	if err != nil {
-		log.Println("ERROR: ", err.Error())
+		log.LogError(err)
 		return respError(err)
 	}
 
@@ -83,32 +83,52 @@ func CheckConnectionWithMaster() bool {
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		log.Printf("ERROR: %s\n", err.Error())
+		log.LogError(err)
 		return false
 	}
+
 	defer conn.Close()
 
-	// Send PING command
-	_, err = conn.Write([]byte(encodeArrayString([]string{parserModel.PING_COMMAND})))
-	if err != nil {
-		log.Printf("ERROR: Failed to write to connection: %s\n", err.Error())
-		return false
+	requestCommands := []string{
+		encodeArrayString([]string{parserModel.PING_COMMAND}),
+		encodeArrayString([]string{parserModel.REPLCONF, parserModel.REPLCONF_LISTEN_PORT, fmt.Sprint(config.GetRedisServerConfig().GetPort())}),
+		encodeArrayString([]string{parserModel.REPLCONF, parserModel.REPLCONF_CAPA, parserModel.REPLCONF_PYSYNC2}),
+		encodeArrayString([]string{parserModel.PYSNC, "?", "-1"}),
 	}
 
-	// Read the response
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		log.Printf("ERROR: Failed to read from connection: %s\n", err.Error())
-		return false
+	expectedResponses := []string{
+		encodeSimpleString("PONG"),
+		encodeSimpleString("OK"),
+		encodeSimpleString("OK"),
+		encodeSimpleString("FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0"),
 	}
 
-	response := string(buffer[:n])
-	expectedResponse := encodeSimpleString("PONG")
+	for i, command := range requestCommands {
 
-	if response != expectedResponse {
-		log.Printf("ERROR: Invalid response from master server. Expected %s, got %s\n", expectedResponse, response)
-		return false
+		log.LogInfo(fmt.Sprintf("Sending command to master: %q\n", command))
+
+		_, err := conn.Write([]byte(command))
+		if err != nil {
+			log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
+			return false
+		}
+
+		response := make([]byte, 1024)
+
+		n, err := conn.Read(response)
+		if err != nil {
+			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
+			return false
+		}
+
+		response = response[:n] // Trim the buffer to the actual number of bytes read
+
+		if string(response) != expectedResponses[i] && i != 3 {
+			log.LogError(fmt.Errorf("invalid response from master: %q", string(response)))
+			return false
+		} else {
+			log.LogInfo(fmt.Sprintf("Received response from master: %q", string(response)))
+		}
 	}
 
 	return true

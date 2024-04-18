@@ -13,6 +13,10 @@ const (
 	DEFAULT_PORT  = 6379
 )
 
+const (
+	READ_TIMEOUT = 60 // seconds
+)
+
 var redisServerConfig *RedisServer
 
 func init() {
@@ -66,4 +70,8 @@ func (r *RedisServer) IsMaster() bool {
 
 func (r *RedisServer) IsSlave() bool {
 	return r.serverType == SLAVE_SERVER
+}
+
+func GetReadTimeout() int {
+	return READ_TIMEOUT
 }

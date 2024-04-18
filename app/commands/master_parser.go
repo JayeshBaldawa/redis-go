@@ -22,7 +22,6 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 
 	// Convert command to lower case for case-insensitive comparison
 	command := strings.ToLower(strCommand[0])
-
 	switch command {
 	case parserModel.ECHO_COMMAND:
 		return encodeBulkString(getCommandParameter(strCommand, 1)), nil
@@ -34,9 +33,32 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 		return masterParser.processGetCommand(strCommand)
 	case parserModel.INFO_COMMAND:
 		return masterParser.processInfoCommand(strCommand)
+	case parserModel.REPLCONF:
+		return masterParser.checkReplconCommand(strCommand)
+	case parserModel.PYSNC:
+		return masterParser.handlePysncCommand(), nil
 	default:
 		return "", errors.New("unknown command")
 	}
+}
+
+func (masterParser *MasterParser) handlePysncCommand() string {
+	return encodeSimpleString(parserModel.FULLRESYNC + " 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0")
+}
+
+func (masterParser *MasterParser) checkReplconCommand(strCommand []string) (string, error) {
+	if len(strCommand) < 3 {
+		return "", errors.New("invalid format for REPLCONF command")
+	}
+	switch strings.ToLower(strCommand[1]) {
+	case parserModel.REPLCONF_LISTEN_PORT:
+		return encodeSimpleString("OK"), nil
+	case parserModel.REPLCONF_CAPA:
+		if strings.ToLower(strCommand[2]) == parserModel.REPLCONF_PYSYNC2 {
+			return encodeSimpleString("OK"), nil
+		}
+	}
+	return "", errors.New("invalid format for REPLCONF command")
 }
 
 func (masterParser *MasterParser) processSetCommand(strCommand []string, numElements int) (string, error) {
