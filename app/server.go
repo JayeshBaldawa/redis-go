@@ -1,46 +1,33 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+
+	commands "github.com/codecrafters-io/redis-starter-go/app/commands"
+	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
-
-type RedisServer struct {
-	port        int
-	replicaHost string
-	replicaPort int
-	serverType  string
-}
-
-var redisServerConfig *RedisServer
-
-func init() {
-	redisServerConfig = &RedisServer{
-		port:        6379,
-		replicaHost: "",
-		replicaPort: 0,
-		serverType:  "master",
-	}
-}
 
 func main() {
 
-	readFlagsPassed()
+	readArgsPassed()
 
-	log.Printf("INFO: Creating redis server at : %d", redisServerConfig.port)
+	port := config.GetRedisServerConfig().GetPort()
 
-	l, err := net.Listen("tcp", "0.0.0.0:"+fmt.Sprintf("%d", redisServerConfig.port))
+	log.Printf("INFO: Creating redis server at : %d", port)
+
+	l, err := net.Listen("tcp", "0.0.0.0:"+fmt.Sprintf("%d", port))
 	if err != nil {
-		fmt.Printf("ERROR: Failed to bind to port + %d", redisServerConfig.port)
+		fmt.Printf("ERROR: Failed to bind to port + %d", port)
 		os.Exit(1)
 	}
 	defer l.Close()
 
-	log.Printf("INFO: Listening to port %d", redisServerConfig.port)
+	log.Printf("INFO: Listening to port %d", port)
 
 	for {
 		conn, err := l.Accept()
@@ -63,6 +50,10 @@ func handleRequest(conn net.Conn) {
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
+			if err.Error() == "EOF" {
+				log.Printf("INFO: Client %s closed the connection", conn.RemoteAddr())
+				return
+			}
 			log.Printf("ERROR: Failed to read from connection: %s", err.Error())
 			return
 		}
@@ -78,7 +69,7 @@ func handleRequest(conn net.Conn) {
 		log.Printf("INFO: Received command from %s: %s", conn.RemoteAddr(), command)
 
 		// Handle the command
-		resp := handleCommand(command)
+		resp := commands.HandleCommand(command)
 
 		// Write the response back to the client
 		_, err = conn.Write([]byte(resp))
@@ -89,14 +80,34 @@ func handleRequest(conn net.Conn) {
 	}
 }
 
-func readFlagsPassed() {
-	port := flag.Int("port", redisServerConfig.port, "Port to run the server on")
-	replicaHost := flag.String("replicaof", "", "Host to replicate to")
-	flag.Parse()
-	if *replicaHost != "" {
-		redisServerConfig.serverType = "slave"
+func readArgsPassed() {
+	redisServerConfig := config.GetRedisServerConfig()
+	args := os.Args[1:] // Skip the first argument which is the program name
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--port":
+			i++
+			redisServerConfig.SetPort(getPort(args[i]))
+		case "--replicaof":
+			i++
+			redisServerConfig.SetServerType(config.SLAVE_SERVER)
+			redisServerConfig.SetReplicaHost(args[i])
+			i++
+			redisServerConfig.SetReplicaPort(getPort(args[i]))
+			fmt.Printf("INFO: Replicating to %s:%d\n", redisServerConfig.GetReplicaHost(), redisServerConfig.GetReplicaPort())
+			if !commands.CheckConnectionWithMaster() {
+				log.Println("ERROR: Unable to connect to master server")
+				os.Exit(1)
+			}
+		}
 	}
-	redisServerConfig.port = *port
-	redisServerConfig.replicaHost = *replicaHost
-	fmt.Println("Port: ", *port)
+}
+
+func getPort(port string) int {
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		log.Println("ERROR: Invalid port number")
+		os.Exit(1)
+	}
+	return portInt
 }
