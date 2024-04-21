@@ -1,0 +1,36 @@
+{"level":"INFO","time":"2024-04-21T23:12:05.664+0530","msg":"slave:6380: \"Replicating data from localhost:6379\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.671+0530","msg":"slave:6380: \"Sending command to master: \\\"*1\\\\r\\\\n$4\\\\r\\\\nping\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.672+0530","msg":"slave:6380: \"Received response from master: \\\"+PONG\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.673+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$14\\\\r\\\\nlistening-port\\\\r\\\\n$4\\\\r\\\\n6380\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.674+0530","msg":"slave:6380: \"Received response from master: \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.674+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$4\\\\r\\\\ncapa\\\\r\\\\n$6\\\\r\\\\npsync2\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.675+0530","msg":"slave:6380: \"Received response from master: \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.675+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$5\\\\r\\\\npsync\\\\r\\\\n$1\\\\r\\\\n?\\\\r\\\\n$2\\\\r\\\\n-1\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.676+0530","msg":"slave:6380: \"Received response from master: \\\"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.676+0530","msg":"slave:6380: \"Starting server on port 6380\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.677+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:05.677+0530","msg":"slave:6380: \"Server started successfully\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.269+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:52681\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.270+0530","msg":"slave:6380: \"Received command: \\\"*3\\\\\\\\r\\\\\\\\n$8\\\\\\\\r\\\\\\\\nreplconf\\\\\\\\r\\\\\\\\n$6\\\\\\\\r\\\\\\\\ngetack\\\\\\\\r\\\\\\\\n$1\\\\\\\\r\\\\\\\\n*\\\\\\\\r\\\\\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.270+0530","msg":"slave:6380: \"Splitted Commands: [*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$6\\\\r\\\\ngetack\\\\r\\\\n$1\\\\r\\\\n*\\\\r\\\\n]\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.270+0530","msg":"slave:6380: \"invalid format for array\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.270+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid format for array\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.270+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:52681\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:13.273+0530","msg":"slave:6380: \"Connection closed by \\\"[::1]:52681\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:27.445+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:52683\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:27.446+0530","msg":"slave:6380: \"Received command: \\\"*3\\\\\\\\r\\\\\\\\n$8\\\\\\\\r\\\\\\\\nreplconf\\\\\\\\r\\\\\\\\n$6\\\\\\\\r\\\\\\\\ngetack\\\\\\\\r\\\\\\\\n$1\\\\\\\\r\\\\\\\\n*\\\\\\\\r\\\\\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:38.071+0530","msg":"slave:6380: \"Splitted Commands: [*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$6\\\\r\\\\ngetack\\\\r\\\\n$1\\\\r\\\\n*\\\\r\\\\n]\""}
+{"level":"INFO","time":"2024-04-21T23:12:57.666+0530","msg":"slave:6380: \"invalid format for array\""}
+{"level":"INFO","time":"2024-04-21T23:12:57.666+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid format for array\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:57.666+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:52683\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:12:57.668+0530","msg":"slave:6380: \"Connection closed by \\\"[::1]:52683\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:09.903+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:52686\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:09.903+0530","msg":"slave:6380: \"Received command: \\\"*3\\\\\\\\r\\\\\\\\n$8\\\\\\\\r\\\\\\\\nreplconf\\\\\\\\r\\\\\\\\n$6\\\\\\\\r\\\\\\\\ngetack\\\\\\\\r\\\\\\\\n$1\\\\\\\\r\\\\\\\\n*\\\\\\\\r\\\\\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:12.499+0530","msg":"slave:6380: \"Splitted Commands: [*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$6\\\\r\\\\ngetack\\\\r\\\\n$1\\\\r\\\\n*\\\\r\\\\n]\""}
+{"level":"INFO","time":"2024-04-21T23:13:12.499+0530","msg":"slave:6380: \"invalid format for array\""}
+{"level":"INFO","time":"2024-04-21T23:13:12.500+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid format for array\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:12.500+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:52686\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:12.501+0530","msg":"slave:6380: \"Connection closed by \\\"[::1]:52686\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:32.183+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:52692\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:32.184+0530","msg":"slave:6380: \"Received command: \\\"*3\\\\\\\\r\\\\\\\\n$8\\\\\\\\r\\\\\\\\nreplconf\\\\\\\\r\\\\\\\\n$6\\\\\\\\r\\\\\\\\ngetack\\\\\\\\r\\\\\\\\n$1\\\\\\\\r\\\\\\\\n*\\\\\\\\r\\\\\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:13:34.924+0530","msg":"slave:6380: \"Splitted Commands: [*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$6\\\\r\\\\ngetack\\\\r\\\\n$1\\\\r\\\\n*\\\\r\\\\n]\""}

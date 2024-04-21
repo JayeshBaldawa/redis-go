@@ -1,0 +1,4 @@
+{"level":"INFO","time":"2024-04-21T22:48:19.562+0530","msg":"master:6379: \"Starting server on port 6379\""}
+{"level":"INFO","time":"2024-04-21T22:48:19.565+0530","msg":"master:6379: \"Server started successfully\""}
+{"level":"INFO","time":"2024-04-21T22:48:23.436+0530","msg":"master:6379: \"Connection received from \\\"[::1]:51419\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:48:23.436+0530","msg":"master:6379: \"Received command: \\\"*3\\\\r\\\\n$3\\\\r\\\\nSET\\\\r\\\\n$3\\\\r\\\\nbaz\\\\r\\\\n$3\\\\r\\\\n789\\\\r\\\\n*3\\\\r\\\\n$3\\\\r\\\\nSET\\\\r\\\\n$3\\\\r\\\\nfaz\\\\r\\\\n$3\\\\r\\\\n289\\\"\""}

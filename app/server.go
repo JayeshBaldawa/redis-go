@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -41,6 +42,14 @@ func main() {
 }
 
 func handleRequest(conn net.Conn) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.LogError(fmt.Errorf("panic occurred: %s", r))
+			conn.Write([]byte(fmt.Sprintf("Error: %s", r)))
+		}
+	}()
+
 	defer conn.Close()
 
 	log.LogInfo(fmt.Sprintf("Connection received from %q", conn.RemoteAddr()))
@@ -60,7 +69,7 @@ func handleRequest(conn net.Conn) {
 
 		n, err := conn.Read(buf)
 		if err != nil {
-			if err.Error() == "EOF" {
+			if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "wsarecv") || errors.Is(err, net.ErrClosed) {
 				log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
 				return
 			}
@@ -70,6 +79,8 @@ func handleRequest(conn net.Conn) {
 
 		// Trim trailing whitespace
 		command := strings.TrimSpace(string(buf[:n]))
+		// Replace \\ with \
+		command = strings.ReplaceAll(command, "\\\\", "\\")
 
 		if command == "exit" {
 			log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
@@ -79,14 +90,7 @@ func handleRequest(conn net.Conn) {
 		log.LogInfo(fmt.Sprintf("Received command: %q", command))
 
 		// Handle the command
-		resp := commands.HandleCommand(command)
-
-		// Write the response back to the client
-		_, err = conn.Write([]byte(resp))
-		if err != nil {
-			log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
-			return
-		}
+		commands.HandleCommand(command, conn)
 	}
 }
 
@@ -105,10 +109,14 @@ func readArgsPassed() {
 			i++
 			redisServerConfig.SetReplicaPort(getPort(args[i]))
 			log.LogInfo(fmt.Sprintf("Replicating data from %s:%d", redisServerConfig.GetReplicaHost(), redisServerConfig.GetReplicaPort()))
-			if !commands.CheckConnectionWithMaster() {
+			var conn net.Conn
+			var success bool
+			// Check connection with master
+			if success, conn = commands.CheckConnectionWithMaster(); !success {
 				log.LogError(fmt.Errorf("failed to connect to master server"))
 				os.Exit(1)
 			}
+			go handleRequest(conn) // Handle the connection with the master server
 		}
 	}
 }

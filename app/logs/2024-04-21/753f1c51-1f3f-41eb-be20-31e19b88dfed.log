@@ -1,0 +1,10 @@
+{"level":"INFO","time":"2024-04-21T22:53:15.488+0530","msg":"master:6379: \"Starting server on port 6379\""}
+{"level":"INFO","time":"2024-04-21T22:53:15.490+0530","msg":"master:6379: \"Server started successfully\""}
+{"level":"INFO","time":"2024-04-21T22:53:20.346+0530","msg":"master:6379: \"Connection received from \\\"[::1]:51457\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:20.346+0530","msg":"master:6379: \"Received command: \\\"*3\\\\r\\\\n$3\\\\r\\\\nSET\\\\r\\\\n$3\\\\r\\\\nbaz\\\\r\\\\n$3\\\\r\\\\n789\\\\r\\\\n*3\\\\r\\\\n$3\\\\r\\\\nSET\\\\r\\\\n$3\\\\r\\\\nfaz\\\\r\\\\n$3\\\\r\\\\n289\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:29.193+0530","msg":"master:6379: \"Splitted Commands: [*3\\r\\n$3\\r\\nSET\\r\\n$3\\r\\nbaz\\r\\n$3\\r\\n789\\r\\n *3\\r\\n$3\\r\\nSET\\r\\n$3\\r\\nfaz\\r\\n$3\\r\\n289]\""}
+{"level":"INFO","time":"2024-04-21T22:53:33.094+0530","msg":"master:6379: \"Command is \\\"set\\\" --> Response is \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:33.094+0530","msg":"master:6379: \"Writing data for \\\"[::1]:51457\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:35.718+0530","msg":"master:6379: \"Command is \\\"set\\\" --> Response is \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:35.718+0530","msg":"master:6379: \"Writing data for \\\"[::1]:51457\\\"\""}
+{"level":"INFO","time":"2024-04-21T22:53:35.718+0530","msg":"master:6379: \"Connection closed by \\\"[::1]:51457\\\"\""}

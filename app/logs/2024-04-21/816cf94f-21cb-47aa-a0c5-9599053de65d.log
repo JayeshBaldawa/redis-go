@@ -1,0 +1,80 @@
+{"level":"INFO","time":"2024-04-21T23:08:23.978+0530","msg":"slave:6380: \"Replicating data from localhost:6379\""}
+{"level":"INFO","time":"2024-04-21T23:08:23.984+0530","msg":"slave:6380: \"Sending command to master: \\\"*1\\\\r\\\\n$4\\\\r\\\\nping\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:08:23.999+0530","msg":"slave:6380: \"Received response from master: \\\"+PONG\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.000+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$14\\\\r\\\\nlistening-port\\\\r\\\\n$4\\\\r\\\\n6380\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.000+0530","msg":"slave:6380: \"Received response from master: \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.001+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$8\\\\r\\\\nreplconf\\\\r\\\\n$4\\\\r\\\\ncapa\\\\r\\\\n$6\\\\r\\\\npsync2\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.002+0530","msg":"slave:6380: \"Received response from master: \\\"+OK\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.002+0530","msg":"slave:6380: \"Sending command to master: \\\"*3\\\\r\\\\n$5\\\\r\\\\npsync\\\\r\\\\n$1\\\\r\\\\n?\\\\r\\\\n$2\\\\r\\\\n-1\\\\r\\\\n\\\"\\n\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.003+0530","msg":"slave:6380: \"Received response from master: \\\"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.003+0530","msg":"slave:6380: \"Starting server on port 6380\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.003+0530","msg":"slave:6380: \"Connection received from \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.003+0530","msg":"slave:6380: \"Received command: \\\"$88\\\\r\\\\nREDIS0011\\\\xfa\\\\tredis-ver\\\\x057.2.0\\\\xfa\\\\nredis-bits\\\\xc0@\\\\xfa\\\\x05ctime\\\\xc2m\\\\b\\\\xbce\\\\xfa\\\\bused-mem°\\\\xc4\\\\x10\\\\x00\\\\xfa\\\\baof-base\\\\xc0\\\\x00\\\\xff\\\\xf0n;\\\\xfe\\\\xc0\\\\xffZ\\\\xa2\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:24.003+0530","msg":"slave:6380: \"Splitted Commands: [$88\\r\\nREDIS0011\\xfa\\tredis-ver\\x057.2.0\\xfa\\nredis-bits\\xc0@\\xfa\\x05ctime\\xc2m\\b\\xbce\\xfa\\bused-mem°\\xc4\\x10\\x00\\xfa\\baof-base\\xc0\\x00\\xff\\xf0n;\\xfe\\xc0\\xffZ\\xa2]\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.399+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.399+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.400+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.400+0530","msg":"slave:6380: \"Server started successfully\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.400+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.404+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:27.404+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.562+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.562+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.562+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.563+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.566+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:28.566+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.355+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.355+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.355+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.356+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.360+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:29.360+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.041+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.042+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.042+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.042+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.047+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.047+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.693+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.693+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.693+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.693+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.699+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:30.700+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.277+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.277+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.277+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.278+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.284+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.284+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.897+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.898+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.898+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.898+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.904+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:31.904+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.940+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.940+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.940+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.940+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.945+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:32.945+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.583+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.583+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.583+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.584+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.589+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.589+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.875+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.876+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.876+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.876+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.877+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:33.878+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.140+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.140+0530","msg":"slave:6380: \"invalid command\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.141+0530","msg":"slave:6380: \"Command is \\\"\\\" --> Response is \\\"- invalid command\\\\r\\\\n\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.141+0530","msg":"slave:6380: \"Writing data for \\\"[::1]:6379\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.147+0530","msg":"slave:6380: \"Received command: \\\"- invalid command\\\"\""}
+{"level":"INFO","time":"2024-04-21T23:08:34.147+0530","msg":"slave:6380: \"Splitted Commands: [- invalid command]\""}
