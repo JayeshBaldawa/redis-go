@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -32,6 +33,11 @@ func encodeArrayString(resps []string) string {
 	return bufferString.String()
 }
 
+func encodeRDBResp() string {
+	emptyRdb, _ := hex.DecodeString(parserModel.EMPTY_RDB_FILE)
+	return strings.TrimRight(encodeBulkString(string(emptyRdb)), "\r\n")
+}
+
 func respError(err error) string {
 	return parserModel.ERROR + " " + err.Error() + parserModel.STR_WRAPPER
 }
@@ -49,4 +55,49 @@ func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
 	default:
 		return time.Time{}
 	}
+}
+
+func formatCommandOutput(resp string, cmdName string) parserModel.CommandOutput {
+	return parserModel.CommandOutput{
+		ComamndName: cmdName,
+		Response:    resp,
+	}
+}
+
+func splitByMultiple(str string, delimiters string) []string {
+
+	// Remove empty strings
+	var newParts []string
+
+	// Find all matches in the response string
+	commands := parserModel.RegexFullResyncPattern.FindAllStringSubmatch(str, -1)
+
+	if len(commands) == 1 {
+		// Extract the matched groups
+		for i := 1; i < len(commands[0]); i++ {
+			newParts = append(newParts, commands[0][i])
+		}
+	}
+
+	// Split by delimiters
+	split := func(r rune) bool {
+		return strings.ContainsRune(delimiters, r)
+	}
+
+	parts := strings.FieldsFunc(str, split)
+
+	for _, part := range parts {
+		if part != "" {
+			newParts = append(newParts, part)
+		}
+	}
+
+	// Assume that the delimiters are single characters
+	if len(delimiters) == 1 {
+		for i := 0; i < len(newParts); i++ {
+			newParts[i] = delimiters + parts[i]
+		}
+	}
+
+	return newParts
 }

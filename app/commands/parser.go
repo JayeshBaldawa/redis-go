@@ -13,18 +13,32 @@ import (
 )
 
 type Parser interface {
-	ProcessArrayCommand(strCommand []string, numElements int) (string, error)
+	ProcessArrayCommand(strCommand []string, numElements int) (parserModel.CommandOutput, error)
 }
 
-func HandleCommand(strCommand string) string {
+// List of replica servers
+var replicaServers = []net.Conn{}
+
+// List of keywords indicating a slave command for the connection
+var slaveKeywords = []string{parserModel.PYSNC}
+
+// List of write back commands for the CDN
+var writeBackCommands = []string{parserModel.SET_COMMAND}
+
+// List of Type of Strings
+var stringTypes = parserModel.ARRAYS
+
+// Increase buffer size
+const bufferSize = 4096
+
+func HandleCommand(strCommand string, conn net.Conn) {
+
 	if len(strCommand) == 0 {
-		return respError(errors.New("empty command"))
+		WriteBackToConnection(conn, respError(errors.New("no command provided")), "")
+		return
 	}
 
-	// Get the first character of the command
-	startChar := string(strCommand[0])
-
-	var resp string
+	var resp parserModel.CommandOutput
 	var err error
 	var parserObj Parser
 
@@ -35,30 +49,122 @@ func HandleCommand(strCommand string) string {
 		parserObj = &SlaveParser{}
 	}
 
-	// Split the command by STR_WRAPPER
-	splittedCommand := strings.Split(strCommand, parserModel.STR_WRAPPER)
+	splittedCmds := splitCommands(strCommand)
 
-	switch startChar {
-	case parserModel.ARRAYS:
-		resp, err = processArrayCommand(parserObj, splittedCommand)
-	default:
-		log.LogError(errors.New("invalid command"))
-		return encodeSimpleString("PONG")
+	for _, cmd := range splittedCmds {
+
+		// Get the first character of the command
+		startChar := string(cmd[0])
+
+		// Split the command by STR_WRAPPER
+		splittedStrs := strings.Split(cmd, parserModel.STR_WRAPPER)
+
+		switch startChar {
+		case parserModel.ARRAYS:
+			resp, err = processArrayCommand(parserObj, splittedStrs)
+		default:
+			err = errors.New("invalid command")
+			log.LogInfo(err.Error())
+			resp = parserModel.CommandOutput{
+				ComamndName: "",
+				Response:    respError(err),
+			}
+		}
+
+		if err != nil {
+			log.LogInfo(err.Error())
+			WriteBackToConnection(conn, respError(err), "")
+			return
+		}
+
+		if isSlaveConnectionRequest(resp.ComamndName) {
+			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.ComamndName))
+			replicaServers = append(replicaServers, conn)
+		}
+
+		if shouldWriteBack(resp.ComamndName) {
+			WriteBackToConnection(conn, resp.Response, resp.ComamndName)
+		}
+
+		// Write the response to all replica servers if the server is a master server
+		if config.GetRedisServerConfig().IsMaster() && shouldReplicate(resp.ComamndName) {
+			go writeBackToReplicaServers(strCommand)
+		}
 	}
-
-	if err != nil {
-		log.LogError(err)
-		return respError(err)
-	}
-
-	return resp
 }
 
-func processArrayCommand(parser Parser, splittedCommand []string) (string, error) {
+func writeBackToReplicaServers(data string) {
+	// Write data to each replica server
+	for _, replicaServer := range replicaServers {
+		_, err := replicaServer.Write([]byte(data + "\r\n"))
+		log.LogInfo(fmt.Sprintf("Writing data to replica server %q", replicaServer.RemoteAddr()))
+		if err != nil {
+			log.LogError(fmt.Errorf("error writing data to replica server: %s", err.Error()))
+			// Remove the replica server from the list if there is an error
+			replicaServers = removeReplicaServer(replicaServers, replicaServer)
+			log.LogInfo(fmt.Sprintf("Replica server %q removed from the list", replicaServer.RemoteAddr()))
+		}
+	}
+}
+
+func removeReplicaServer(replicaServers []net.Conn, replicaServer net.Conn) []net.Conn {
+	var newReplicaServers []net.Conn
+	for _, server := range replicaServers {
+		if server != replicaServer {
+			newReplicaServers = append(newReplicaServers, server)
+		}
+	}
+	return newReplicaServers
+}
+
+func shouldWriteBack(cmdName string) bool {
+	if config.GetRedisServerConfig().IsMaster() {
+		return true
+	}
+
+	// Check if the command contains any of the write back keywords
+	for _, cmd := range writeBackCommands {
+		if strings.Contains(cmdName, cmd) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func shouldReplicate(receivedCmd string) bool {
+	// Check if the command contains any of the replica keywords
+	for _, cmd := range writeBackCommands {
+		if strings.Contains(receivedCmd, cmd) {
+			return true
+		}
+	}
+	return false
+}
+
+func resendDataToConn(cmd string) (bool, string) {
+	switch cmd {
+	case parserModel.PYSNC:
+		return true, encodeRDBResp()
+	}
+	return false, ""
+}
+
+func isSlaveConnectionRequest(cmd string) bool {
+	// Check if the command contains any of the slave keywords
+	for _, keyword := range slaveKeywords {
+		if strings.Contains(cmd, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func processArrayCommand(parser Parser, splittedCommand []string) (parserModel.CommandOutput, error) {
 	// Get the number of elements in the array
 	numElements, err := strconv.Atoi(splittedCommand[0][1:])
 	if err != nil || numElements == 0 {
-		return "", errors.New("invalid format for array")
+		return parserModel.CommandOutput{}, errors.New("invalid format for array")
 	}
 
 	// Get the elements of the array
@@ -73,7 +179,7 @@ func processArrayCommand(parser Parser, splittedCommand []string) (string, error
 	return parser.ProcessArrayCommand(arrayElements, numElements)
 }
 
-func CheckConnectionWithMaster() bool {
+func CheckConnectionWithMaster() (bool, net.Conn) {
 	// Get Replica Host and Port
 	replicaHost := config.GetRedisServerConfig().GetReplicaHost()
 	replicaPort := config.GetRedisServerConfig().GetReplicaPort()
@@ -84,10 +190,8 @@ func CheckConnectionWithMaster() bool {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		log.LogError(err)
-		return false
+		return false, nil
 	}
-
-	defer conn.Close()
 
 	requestCommands := []string{
 		encodeArrayString([]string{parserModel.PING_COMMAND}),
@@ -104,32 +208,77 @@ func CheckConnectionWithMaster() bool {
 	}
 
 	for i, command := range requestCommands {
-
 		log.LogInfo(fmt.Sprintf("Sending command to master: %q\n", command))
 
 		_, err := conn.Write([]byte(command))
 		if err != nil {
 			log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
-			return false
+			return false, nil
 		}
 
-		response := make([]byte, 1024)
+		response := make([]byte, bufferSize)
 
 		n, err := conn.Read(response)
 		if err != nil {
 			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
-			return false
+			return false, nil
 		}
 
 		response = response[:n] // Trim the buffer to the actual number of bytes read
 
 		if string(response) != expectedResponses[i] && i != 3 {
 			log.LogError(fmt.Errorf("invalid response from master: %q", string(response)))
-			return false
+			return false, nil
 		} else {
 			log.LogInfo(fmt.Sprintf("Received response from master: %q", string(response)))
 		}
 	}
 
-	return true
+	/*
+		// Need to comment this because Codecrafters is sending RDB file along with the response of PYSNC command
+
+		// Read the RDB file from the master server
+		rdbData := make([]byte, bufferSize)
+		n, err := conn.Read(rdbData)
+		if err != nil {
+			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
+			return false, nil
+		}
+
+		rdbData = rdbData[:n] // Trim the buffer to the actual number of bytes read
+
+	*/
+
+	return true, conn
+}
+
+func WriteBackToConnection(conn net.Conn, data string, cmd string) {
+	log.LogInfo(fmt.Sprintf("Command is %q --> Response is %q", cmd, data))
+	log.LogInfo(fmt.Sprintf("Writing data for %q", conn.RemoteAddr()))
+	// Send Response Back to Connection
+	_, err := conn.Write([]byte(data))
+	if err != nil {
+		log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
+		return
+	}
+
+	if ok, resp := resendDataToConn(cmd); ok {
+		_, err := conn.Write([]byte(resp))
+		if err != nil {
+			log.LogError(fmt.Errorf("error writing data: %s", err.Error()))
+		}
+	}
+}
+
+func splitCommands(strCommand string) []string {
+	var result []string
+	if strings.Count(strCommand, parserModel.ARRAYS) > 1 {
+		// Skip the first character
+		result = splitByMultiple(strCommand, stringTypes)
+	} else {
+		result = []string{strCommand}
+	}
+
+	log.LogInfo(fmt.Sprintf("Splitted Commands: %v", result))
+	return result
 }

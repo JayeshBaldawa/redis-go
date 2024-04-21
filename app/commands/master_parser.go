@@ -14,31 +14,47 @@ import (
 
 type MasterParser struct{}
 
-func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numElements int) (string, error) {
+func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numElements int) (parserModel.CommandOutput, error) {
 	// Ensure at least one command is provided
 	if len(strCommand) < 1 {
-		return "", errors.New("no command provided")
+		return parserModel.CommandOutput{}, errors.New("no command provided")
 	}
 
 	// Convert command to lower case for case-insensitive comparison
 	command := strings.ToLower(strCommand[0])
 	switch command {
 	case parserModel.ECHO_COMMAND:
-		return encodeBulkString(getCommandParameter(strCommand, 1)), nil
+		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND), nil
 	case parserModel.PING_COMMAND:
-		return encodeSimpleString("PONG"), nil
+		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND), nil
 	case parserModel.SET_COMMAND:
-		return masterParser.processSetCommand(strCommand, numElements)
+		resp, err := masterParser.processSetCommand(strCommand, numElements)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.SET_COMMAND), nil
 	case parserModel.GET_COMMAND:
-		return masterParser.processGetCommand(strCommand)
+		resp, err := masterParser.processGetCommand(strCommand)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.GET_COMMAND), nil
 	case parserModel.INFO_COMMAND:
-		return masterParser.processInfoCommand(strCommand)
+		resp, err := masterParser.processInfoCommand(strCommand)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.INFO_COMMAND), nil
 	case parserModel.REPLCONF:
-		return masterParser.checkReplconCommand(strCommand)
+		resp, err := masterParser.checkReplconCommand(strCommand)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.REPLCONF), nil
 	case parserModel.PYSNC:
-		return masterParser.handlePysncCommand(), nil
+		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC), nil
 	default:
-		return "", errors.New("unknown command")
+		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
 }
 
