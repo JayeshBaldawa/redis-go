@@ -63,9 +63,6 @@ func (masterParser *MasterParser) handlePysncCommand() string {
 }
 
 func (masterParser *MasterParser) checkReplconCommand(strCommand []string) (string, error) {
-	if len(strCommand) < 3 {
-		return "", errors.New("invalid format for REPLCONF command")
-	}
 	switch strings.ToLower(strCommand[1]) {
 	case parserModel.REPLCONF_LISTEN_PORT:
 		return encodeSimpleString("OK"), nil
@@ -73,6 +70,8 @@ func (masterParser *MasterParser) checkReplconCommand(strCommand []string) (stri
 		if strings.ToLower(strCommand[2]) == parserModel.REPLCONF_PYSYNC2 {
 			return encodeSimpleString("OK"), nil
 		}
+	case parserModel.GETACK:
+		return encodeBulkString(parserModel.REPLCONF + " " + parserModel.ACK_RESP + " 0"), nil
 	}
 	return "", errors.New("invalid format for REPLCONF command")
 }

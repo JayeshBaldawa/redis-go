@@ -6,6 +6,7 @@ import (
 	"time"
 
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
+	storageModel "github.com/codecrafters-io/redis-starter-go/app/models"
 )
 
 type Storage interface {
@@ -18,10 +19,16 @@ type InMemoryStorage struct {
 	dataTime sync.Map
 }
 
+type RedisStorageInsight struct {
+	insights sync.Map // ProcessedBytes
+}
+
 var storage *InMemoryStorage
+var redisStorageInsight *RedisStorageInsight
 
 func init() {
 	storage = NewInMemoryStorage()
+	redisStorageInsight = NewRedisStorageInsight()
 }
 
 func GetStorage() *InMemoryStorage {
@@ -32,6 +39,12 @@ func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		data:     sync.Map{},
 		dataTime: sync.Map{},
+	}
+}
+
+func NewRedisStorageInsight() *RedisStorageInsight {
+	return &RedisStorageInsight{
+		insights: sync.Map{},
 	}
 }
 
@@ -63,4 +76,24 @@ func (s *InMemoryStorage) Get(key string) (string, error) {
 
 	return value.(string), nil
 
+}
+
+func GetRedisStorageInsight() *RedisStorageInsight {
+	return redisStorageInsight
+}
+
+func (r *RedisStorageInsight) SetProcessedBytes(processedBytes int64) {
+	exitingBytes, ok := r.insights.Load(storageModel.PROCESSED_BYTES)
+	if ok {
+		processedBytes = processedBytes + exitingBytes.(int64)
+	}
+	r.insights.Store(storageModel.PROCESSED_BYTES, processedBytes)
+}
+
+func (r *RedisStorageInsight) GetProcessedBytes() int64 {
+	processedBytes, ok := r.insights.Load(storageModel.PROCESSED_BYTES)
+	if !ok {
+		return 0
+	}
+	return processedBytes.(int64)
 }

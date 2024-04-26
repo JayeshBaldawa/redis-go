@@ -58,12 +58,11 @@ func (slaveParser *SlaveParser) ProcessArrayCommand(strCommand []string, numElem
 }
 
 func (slaveParser *SlaveParser) processReplconfCommand(strCommand []string) (string, error) {
-	if len(strCommand) < 3 {
-		return "", errors.New("invalid format for REPLCONF command")
-	}
 	switch strings.ToLower(strCommand[1]) {
 	case parserModel.GETACK:
-		return encodeArrayString([]string{parserModel.REPLCONF, parserModel.GETACK, "0"}), nil
+		encodeArray := []string{parserModel.REPLCONF, parserModel.ACK_RESP, strconv.Itoa(int(storage.GetRedisStorageInsight().GetProcessedBytes()))}
+		respData := encodeArrayString(encodeArray)
+		return respData, nil
 	default:
 		return "", errors.New("invalid format for REPLCONF command")
 	}

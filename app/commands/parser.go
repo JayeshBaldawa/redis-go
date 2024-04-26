@@ -9,6 +9,7 @@ import (
 
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
 
@@ -25,11 +26,8 @@ var slaveKeywords = []string{parserModel.PYSNC}
 // List of write back commands for the CDN
 var writeBackCommands = []string{parserModel.SET_COMMAND}
 
-// List of Type of Strings
-var stringTypes = parserModel.ARRAYS
-
-// Increase buffer size
-const bufferSize = 4096
+// List of write back commands for the Slave
+var slaveRespondCommand = []string{parserModel.SET_COMMAND, parserModel.PING_COMMAND, parserModel.ECHO_COMMAND}
 
 func HandleCommand(strCommand string, conn net.Conn) {
 
@@ -74,12 +72,16 @@ func HandleCommand(strCommand string, conn net.Conn) {
 		if err != nil {
 			log.LogInfo(err.Error())
 			WriteBackToConnection(conn, respError(err), "")
-			return
+			continue // Skip the rest of the loop
 		}
 
 		if isSlaveConnectionRequest(resp.ComamndName) {
 			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.ComamndName))
 			replicaServers = append(replicaServers, conn)
+		}
+
+		if !config.GetRedisServerConfig().IsMaster() {
+			SetProcessedBytes(int64(len(cmd)))
 		}
 
 		if shouldWriteBack(resp.ComamndName) {
@@ -121,14 +123,12 @@ func shouldWriteBack(cmdName string) bool {
 	if config.GetRedisServerConfig().IsMaster() {
 		return true
 	}
-
 	// Check if the command contains any of the write back keywords
-	for _, cmd := range writeBackCommands {
+	for _, cmd := range slaveRespondCommand {
 		if strings.Contains(cmdName, cmd) {
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -216,6 +216,7 @@ func CheckConnectionWithMaster() (bool, net.Conn) {
 			return false, nil
 		}
 
+		bufferSize := 1024
 		response := make([]byte, bufferSize)
 
 		n, err := conn.Read(response)
@@ -225,6 +226,11 @@ func CheckConnectionWithMaster() (bool, net.Conn) {
 		}
 
 		response = response[:n] // Trim the buffer to the actual number of bytes read
+
+		if i == 3 {
+			// Send the response to be handled
+			go HandleCommand(string(response), conn)
+		}
 
 		if string(response) != expectedResponses[i] && i != 3 {
 			log.LogError(fmt.Errorf("invalid response from master: %q", string(response)))
@@ -237,24 +243,22 @@ func CheckConnectionWithMaster() (bool, net.Conn) {
 	/*
 		// Need to comment this because Codecrafters is sending RDB file along with the response of PYSNC command
 
-		// Read the RDB file from the master server
-		rdbData := make([]byte, bufferSize)
-		n, err := conn.Read(rdbData)
-		if err != nil {
-			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
-			return false, nil
-		}
+			// Read the RDB file from the master server
+			rdbData := make([]byte, bufferSize)
+			n, err := conn.Read(rdbData)
+			if err != nil {
+				log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
+				return false, nil
+			}
 
-		rdbData = rdbData[:n] // Trim the buffer to the actual number of bytes read
+			rdbData = rdbData[:n] // Trim the buffer to the actual number of bytes read
 
 	*/
-
 	return true, conn
 }
 
 func WriteBackToConnection(conn net.Conn, data string, cmd string) {
 	log.LogInfo(fmt.Sprintf("Command is %q --> Response is %q", cmd, data))
-	log.LogInfo(fmt.Sprintf("Writing data for %q", conn.RemoteAddr()))
 	// Send Response Back to Connection
 	_, err := conn.Write([]byte(data))
 	if err != nil {
@@ -271,14 +275,11 @@ func WriteBackToConnection(conn net.Conn, data string, cmd string) {
 }
 
 func splitCommands(strCommand string) []string {
-	var result []string
-	if strings.Count(strCommand, parserModel.ARRAYS) > 1 {
-		// Skip the first character
-		result = splitByMultiple(strCommand, stringTypes)
-	} else {
-		result = []string{strCommand}
-	}
-
+	result := splitByMultiple(strCommand)
 	log.LogInfo(fmt.Sprintf("Splitted Commands: %v", result))
 	return result
+}
+
+func SetProcessedBytes(processedBytes int64) {
+	storage.GetRedisStorageInsight().SetProcessedBytes(processedBytes)
 }

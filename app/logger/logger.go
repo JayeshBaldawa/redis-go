@@ -62,8 +62,8 @@ func init() {
 		zapcore.NewCore(fileEncoder, fileWriter, zap.DebugLevel),
 	)
 
-	// Create logger
-	logger := zap.New(core, zap.AddCaller())
+	// Logger with Stacktrace
+	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 
 	// Create a SugaredLogger, which makes it easy to log messages
 	sugar = logger.Sugar()
