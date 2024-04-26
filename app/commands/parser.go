@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
@@ -17,8 +18,7 @@ type Parser interface {
 	ProcessArrayCommand(strCommand []string, numElements int) (parserModel.CommandOutput, error)
 }
 
-// List of replica servers
-var replicaServers = []net.Conn{}
+var replicaServers sync.Map
 
 // List of keywords indicating a slave command for the connection
 var slaveKeywords = []string{parserModel.PYSNC}
@@ -77,7 +77,8 @@ func HandleCommand(strCommand string, conn net.Conn) {
 
 		if isSlaveConnectionRequest(resp.ComamndName) {
 			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.ComamndName))
-			replicaServers = append(replicaServers, conn)
+			// Add the connection to the list of replica servers
+			replicaServers.Store(conn, true)
 		}
 
 		if !config.GetRedisServerConfig().IsMaster() {
@@ -96,27 +97,22 @@ func HandleCommand(strCommand string, conn net.Conn) {
 }
 
 func writeBackToReplicaServers(data string) {
-	// Write data to each replica server
-	for _, replicaServer := range replicaServers {
-		_, err := replicaServer.Write([]byte(data + "\r\n"))
-		log.LogInfo(fmt.Sprintf("Writing data to replica server %q", replicaServer.RemoteAddr()))
+	replicaServers.Range(func(key, value interface{}) bool {
+		conn := key.(net.Conn)
+		_, err := conn.Write([]byte(data + "\r\n"))
+		log.LogInfo(fmt.Sprintf("Writing data to replica server %q", conn.RemoteAddr()))
 		if err != nil {
 			log.LogError(fmt.Errorf("error writing data to replica server: %s", err.Error()))
-			// Remove the replica server from the list if there is an error
-			replicaServers = removeReplicaServer(replicaServers, replicaServer)
-			log.LogInfo(fmt.Sprintf("Replica server %q removed from the list", replicaServer.RemoteAddr()))
+			// Remove the replica server from the list if available as slave
+			RemoveReplicaServer(conn)
 		}
-	}
+		return true
+	})
 }
 
-func removeReplicaServer(replicaServers []net.Conn, replicaServer net.Conn) []net.Conn {
-	var newReplicaServers []net.Conn
-	for _, server := range replicaServers {
-		if server != replicaServer {
-			newReplicaServers = append(newReplicaServers, server)
-		}
-	}
-	return newReplicaServers
+func RemoveReplicaServer(replicaServer net.Conn) {
+	replicaServers.Delete(replicaServer)
+	log.LogInfo(fmt.Sprintf("Replica server %q removed", replicaServer.RemoteAddr()))
 }
 
 func shouldWriteBack(cmdName string) bool {

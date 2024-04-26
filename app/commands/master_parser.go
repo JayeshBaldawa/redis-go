@@ -53,6 +53,8 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 		return formatCommandOutput(resp, parserModel.REPLCONF), nil
 	case parserModel.PYSNC:
 		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC), nil
+	case parserModel.WAIT:
+		return formatCommandOutput(encodeIntegerString(0), parserModel.WAIT), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
