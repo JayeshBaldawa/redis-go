@@ -54,7 +54,11 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 	case parserModel.PYSNC:
 		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC), nil
 	case parserModel.WAIT:
-		return formatCommandOutput(encodeIntegerString(0), parserModel.WAIT), nil
+		_, err := strconv.Atoi(strCommand[1])
+		if err != nil {
+			return parserModel.CommandOutput{}, errors.New("invalid format for WAIT command")
+		}
+		return formatCommandOutput(encodeIntegerString(replicaServersCount), parserModel.WAIT), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}

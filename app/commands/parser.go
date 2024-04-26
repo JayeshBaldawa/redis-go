@@ -19,6 +19,7 @@ type Parser interface {
 }
 
 var replicaServers sync.Map
+var replicaServersCount int
 
 // List of keywords indicating a slave command for the connection
 var slaveKeywords = []string{parserModel.PYSNC}
@@ -79,6 +80,7 @@ func HandleCommand(strCommand string, conn net.Conn) {
 			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.ComamndName))
 			// Add the connection to the list of replica servers
 			replicaServers.Store(conn, true)
+			replicaServersCount++
 		}
 
 		if !config.GetRedisServerConfig().IsMaster() {
@@ -105,6 +107,7 @@ func writeBackToReplicaServers(data string) {
 			log.LogError(fmt.Errorf("error writing data to replica server: %s", err.Error()))
 			// Remove the replica server from the list if available as slave
 			RemoveReplicaServer(conn)
+			replicaServersCount--
 		}
 		return true
 	})
@@ -112,6 +115,7 @@ func writeBackToReplicaServers(data string) {
 
 func RemoveReplicaServer(replicaServer net.Conn) {
 	replicaServers.Delete(replicaServer)
+	replicaServersCount--
 	log.LogInfo(fmt.Sprintf("Replica server %q removed", replicaServer.RemoteAddr()))
 }
 
