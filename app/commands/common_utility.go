@@ -63,3 +63,7 @@ func formatCommandOutput(resp string, cmdName string) parserModel.CommandOutput 
 		Response:    resp,
 	}
 }
+
+func encodeIntegerString(resp int) string {
+	return fmt.Sprintf("%s%d%s", parserModel.INTEGER, resp, parserModel.STR_WRAPPER)
+}

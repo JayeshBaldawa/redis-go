@@ -1,10 +1,11 @@
 package models
 
 const (
-	SIMPLE = "+"
-	ERROR  = "-"
-	BULK   = "$"
-	ARRAYS = "*"
+	SIMPLE  = "+"
+	ERROR   = "-"
+	BULK    = "$"
+	ARRAYS  = "*"
+	INTEGER = ":"
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 	REPLCONF_PYSYNC2     = "psync2"
 	PYSNC                = "psync"
 	GETACK               = "getack"
+	WAIT                 = "wait"
 	ACK_RESP             = "ACK"
 )
 

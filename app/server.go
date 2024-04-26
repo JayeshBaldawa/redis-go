@@ -71,6 +71,9 @@ func handleRequest(conn net.Conn) {
 		if err != nil {
 			if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "wsarecv") || errors.Is(err, net.ErrClosed) {
 				log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
+				if config.GetRedisServerConfig().IsMaster() {
+					commands.RemoveReplicaServer(conn) // Remove the replica server from the list if available as sla
+				}
 				return
 			}
 			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
