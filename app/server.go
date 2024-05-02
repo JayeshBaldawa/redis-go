@@ -43,41 +43,32 @@ func main() {
 
 func handleRequest(conn net.Conn) {
 
+	isSlaveReq := false
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.LogError(fmt.Errorf("panic occurred: %s", r))
 			conn.Write([]byte(fmt.Sprintf("Error: %s", r)))
 		}
+		if !isSlaveReq {
+			conn.Close() // Close the connection after handling the request
+		}
 	}()
-
-	defer conn.Close()
 
 	log.LogInfo(fmt.Sprintf("Connection received from %q", conn.RemoteAddr()))
 
 	// Reading data in a loop
 	buf := make([]byte, 1024)
 	for {
-		// Read timeout
-		/*
-			readTimeout := time.Duration(config.GetReadTimeout()) * time.Second
-			err := conn.SetReadDeadline(time.Now().Add(readTimeout))
-			if err != nil {
-				log.LogError(fmt.Errorf("error setting read deadline: %s", err.Error()))
-				return
-			}
-		*/
 
 		n, err := conn.Read(buf)
 		if err != nil {
 			if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "wsarecv") || errors.Is(err, net.ErrClosed) {
 				log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
-				if config.GetRedisServerConfig().IsMaster() {
-					commands.RemoveReplicaServer(conn) // Remove the replica server from the list if available as sla
-				}
-				return
+				break
 			}
 			log.LogError(fmt.Errorf("error reading data: %s", err.Error()))
-			return
+			break
 		}
 
 		// Trim trailing whitespace
@@ -87,40 +78,68 @@ func handleRequest(conn net.Conn) {
 
 		if command == "exit" {
 			log.LogInfo(fmt.Sprintf("Connection closed by %q", conn.RemoteAddr()))
-			return
+			conn.Close()
+			break
 		}
 
 		log.LogInfo(fmt.Sprintf("Received command: %q", command))
 
 		// Handle the command
-		commands.HandleCommand(command, conn)
+		if isSlaveReq = commands.HandleCommand(command, conn); isSlaveReq {
+			break
+		}
 	}
+
 }
 
 func readArgsPassed() {
+	// Get Redis server configuration from the application's configuration
 	redisServerConfig := config.GetRedisServerConfig()
-	args := os.Args[1:] // Skip the first argument which is the program name
+
+	// Extract command-line arguments, skipping the program name
+	args := os.Args[1:]
+
+	// Iterate through the arguments
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--port":
+			// Increment i to move to the next argument, which should be the port number
 			i++
-			redisServerConfig.SetPort(getPort(args[i]))
+			port := getPort(args[i])
+			redisServerConfig.SetPort(port)
+
 		case "--replicaof":
+			// Increment i to move to the next argument, which should be the replica host
 			i++
+			// Set the server type to slave
 			redisServerConfig.SetServerType(config.SLAVE_SERVER)
-			redisServerConfig.SetReplicaHost(args[i])
+			replicaHost := args[i]
+			redisServerConfig.SetReplicaHost(replicaHost)
+
+			// Increment i again to move to the replica port argument
 			i++
-			redisServerConfig.SetReplicaPort(getPort(args[i]))
-			log.LogInfo(fmt.Sprintf("Replicating data from %s:%d", redisServerConfig.GetReplicaHost(), redisServerConfig.GetReplicaPort()))
-			var conn net.Conn
-			var success bool
-			// Check connection with master
-			if success, conn = commands.CheckConnectionWithMaster(); !success {
+			replicaPort := getPort(args[i])
+			redisServerConfig.SetReplicaPort(replicaPort)
+
+			// Initialize logger and log the replication configuration
+			log.InitLogger()
+			log.LogInfo(fmt.Sprintf("Replicating data from %s:%d", replicaHost, replicaPort))
+
+			// Check connection with the master server
+			success, conn := commands.CheckConnectionWithMaster()
+			if !success {
 				log.LogError(fmt.Errorf("failed to connect to master server"))
 				os.Exit(1)
 			}
-			go handleRequest(conn) // Handle the connection with the master server
+
+			// Handle the connection with the master server asynchronously
+			go handleRequest(conn)
 		}
+	}
+
+	// If the server type is master, initialize the logger
+	if redisServerConfig.GetServerType() == config.MASTER_SERVER {
+		log.InitLogger()
 	}
 }
 

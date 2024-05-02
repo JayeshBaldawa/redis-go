@@ -1,16 +1,19 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
 	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
-	"github.com/codecrafters-io/redis-starter-go/app/storage"
+	storageModel "github.com/codecrafters-io/redis-starter-go/app/storage"
 	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
 
@@ -30,10 +33,16 @@ var writeBackCommands = []string{parserModel.SET_COMMAND}
 // List of write back commands for the Slave
 var slaveRespondCommand = []string{parserModel.SET_COMMAND, parserModel.PING_COMMAND, parserModel.ECHO_COMMAND}
 
-func HandleCommand(strCommand string, conn net.Conn) {
+func HandleCommand(strCommand string, conn net.Conn) (isSlaveReq bool) {
+
+	isSlaveReq = false
 
 	if len(strCommand) == 0 {
-		WriteBackToConnection(conn, respError(errors.New("no command provided")), "")
+		resp := parserModel.CommandOutput{
+			CommandName: "",
+			Response:    encodeErrorString(errors.New("no command provided")),
+		}
+		WriteBackToConnection(conn, resp)
 		return
 	}
 
@@ -65,37 +74,46 @@ func HandleCommand(strCommand string, conn net.Conn) {
 			err = errors.New("invalid command")
 			log.LogInfo(err.Error())
 			resp = parserModel.CommandOutput{
-				ComamndName: "",
-				Response:    respError(err),
+				CommandName: "",
+				Response:    encodeErrorString(err),
 			}
 		}
 
 		if err != nil {
 			log.LogInfo(err.Error())
-			WriteBackToConnection(conn, respError(err), "")
+			resp = parserModel.CommandOutput{
+				CommandName: "",
+				Response:    encodeErrorString(err),
+			}
+			WriteBackToConnection(conn, resp)
 			continue // Skip the rest of the loop
 		}
 
-		if isSlaveConnectionRequest(resp.ComamndName) {
-			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.ComamndName))
+		if isSlaveConnectionRequest(resp.CommandName) {
+			log.LogInfo(fmt.Sprintf("Slave connection request: %q", resp.CommandName))
 			// Add the connection to the list of replica servers
 			replicaServers.Store(conn, true)
 			replicaServersCount++
-		}
-
-		if !config.GetRedisServerConfig().IsMaster() {
-			SetProcessedBytes(int64(len(cmd)))
-		}
-
-		if shouldWriteBack(resp.ComamndName) {
-			WriteBackToConnection(conn, resp.Response, resp.ComamndName)
+			isSlaveReq = true // So that for loop can break
 		}
 
 		// Write the response to all replica servers if the server is a master server
-		if config.GetRedisServerConfig().IsMaster() && shouldReplicate(resp.ComamndName) {
+		if config.GetRedisServerConfig().IsMaster() && shouldReplicate(resp.CommandName) {
+
 			go writeBackToReplicaServers(strCommand)
 		}
+
+		if shouldWriteBack(resp.CommandName) {
+			WriteBackToConnection(conn, resp)
+		}
+
+		// Increment the processed bytes
+		storageModel.GetRedisStorageInsight().Set(int64(len(cmd)))
+		// Add the command to the stack
+		storageModel.GetStackCmdStruct().AddCommand(resp.CommandName)
 	}
+
+	return
 }
 
 func writeBackToReplicaServers(data string) {
@@ -257,7 +275,24 @@ func CheckConnectionWithMaster() (bool, net.Conn) {
 	return true, conn
 }
 
-func WriteBackToConnection(conn net.Conn, data string, cmd string) {
+func WriteBackToConnection(conn net.Conn, output parserModel.CommandOutput) {
+	// Get the command and response
+	cmd := output.CommandName
+	data := output.Response
+
+	if shouldSync(cmd) {
+		ackRc, err := waitForReplicationSync(output)
+		log.LogInfo(fmt.Sprintf("Final ACK received: %d", ackRc))
+		if err != nil {
+			log.LogError(fmt.Errorf("error waiting for replication sync: %s", err.Error()))
+			data = encodeErrorString(err)
+			cmd = ""
+		} else {
+			data = encodeIntegerString(ackRc)
+		}
+
+	}
+
 	log.LogInfo(fmt.Sprintf("Command is %q --> Response is %q", cmd, data))
 	// Send Response Back to Connection
 	_, err := conn.Write([]byte(data))
@@ -280,6 +315,132 @@ func splitCommands(strCommand string) []string {
 	return result
 }
 
-func SetProcessedBytes(processedBytes int64) {
-	storage.GetRedisStorageInsight().SetProcessedBytes(processedBytes)
+func shouldSync(cmdName string) bool {
+	switch cmdName {
+	case parserModel.WAIT:
+		return true
+	}
+	return false
+
+}
+
+func waitForReplicationSync(input parserModel.CommandOutput) (int, error) {
+
+	if !config.GetRedisServerConfig().IsMaster() || replicaServersCount == 0 {
+		return 0, nil // No replication needed if not a master or no replica servers
+	}
+
+	if input.CommandName != parserModel.WAIT {
+		return -1, fmt.Errorf("unexpected command: %s", input.CommandName)
+	}
+
+	if storageModel.GetStackCmdStruct().GetTopOfStack() != parserModel.SET_COMMAND {
+		return replicaServersCount, nil
+	}
+
+	numOfAckNeededStr := input.Parameters[parserModel.WAIT_REPLICAS_COUNT]
+	if numOfAckNeededStr == "0" {
+		return replicaServersCount, nil
+	}
+
+	_, err := strconv.Atoi(numOfAckNeededStr)
+	if err != nil {
+		return -1, fmt.Errorf("error converting number of replicas needed to integer: %w", err)
+	}
+
+	msString := input.Parameters[parserModel.WAIT_TIMEOUT]
+	milliseconds, err := strconv.ParseInt(msString, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("error converting milliseconds to integer: %w", err)
+	}
+
+	if milliseconds == 0 {
+		// Set default timeout to 5 seconds if not provided
+		milliseconds = 5000
+	}
+
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(milliseconds)*time.Millisecond)
+	defer cancel() // Ensure cancellation of the context when function exits
+
+	// Use atomic integer for acknowledgment counter
+	// var ackCounter int32
+	var countSpawn int
+
+	var testChan = make(chan int, replicaServersCount)
+
+	replicaServers.Range(func(key, value interface{}) bool {
+		conn := key.(net.Conn)
+		countSpawn++
+		go func(conn net.Conn) {
+			err := sendAcknowledgementsForSync(milliseconds, conn, ctx)
+			fmt.Println("DID I GET HERE")
+			if err != nil {
+				log.LogError(fmt.Errorf("error sending ACK request to replica server: %s", err.Error()))
+				testChan <- 0
+				return
+			}
+			testChan <- 1
+		}(conn)
+		return true
+	})
+
+	var test int
+
+	// Wait for the context to be done
+	for i := 0; i < countSpawn; i++ {
+		val := <-testChan
+		if val == 1 {
+			test++
+		}
+	}
+
+	return test, nil
+}
+
+func sendAcknowledgementsForSync(duration int64, Relpconn net.Conn, ctx context.Context) error {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.LogError(fmt.Errorf("recovered from panic: %v", r))
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err() // Return context error on cancellation
+	default:
+		// Send ACK request to the replica server
+		ackArray := []string{strings.ToUpper(parserModel.REPLCONF), strings.ToUpper(parserModel.GETACK), "*"}
+		encodedRequest := encodeArrayString(ackArray)
+
+		if _, err := Relpconn.Write([]byte(encodedRequest)); err != nil {
+			log.LogError(fmt.Errorf("error writing ACK request to replica server %s: %v", Relpconn.RemoteAddr(), err))
+			return err
+		}
+
+		log.LogInfo(fmt.Sprintf("ACK request sent to replica server %q", Relpconn.RemoteAddr()))
+
+		// Add a read timeout to the connection using the context
+		if err := Relpconn.SetReadDeadline(time.Now().Add(time.Duration(duration) * time.Millisecond)); err != nil {
+			log.LogError(fmt.Errorf("error setting read deadline on replica server %s: %v", Relpconn.RemoteAddr(), err))
+			return err
+		}
+
+		// Read the response from the replica server
+		respReceived := make([]byte, 1024)
+		n, err := Relpconn.Read(respReceived)
+		if err != nil {
+			if err != io.EOF {
+				log.LogError(fmt.Errorf("error reading ACK response from replica server %s: %v", Relpconn.RemoteAddr(), err))
+			}
+			return err
+		}
+
+		resp := respReceived[:n] // Trim the buffer to the actual number of bytes read
+
+		log.LogInfo(fmt.Sprintf("ACK response received from replica server %q: %q", Relpconn.RemoteAddr(), resp))
+
+		return nil
+	}
 }

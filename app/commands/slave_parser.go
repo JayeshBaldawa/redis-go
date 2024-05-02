@@ -25,33 +25,33 @@ func (slaveParser *SlaveParser) ProcessArrayCommand(strCommand []string, numElem
 
 	switch command {
 	case parserModel.ECHO_COMMAND:
-		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND), nil
+		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND, nil), nil
 	case parserModel.PING_COMMAND:
-		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND), nil
+		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND, nil), nil
 	case parserModel.INFO_COMMAND:
 		resp, err := slaveParser.processInfoCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.INFO_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.INFO_COMMAND, nil), nil
 	case parserModel.SET_COMMAND:
 		resp, err := slaveParser.processSetCommand(strCommand, numElements)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.SET_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.SET_COMMAND, nil), nil
 	case parserModel.GET_COMMAND:
 		resp, err := slaveParser.processGetCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.GET_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.GET_COMMAND, nil), nil
 	case parserModel.REPLCONF:
 		resp, err := slaveParser.processReplconfCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.GETACK), nil
+		return formatCommandOutput(resp, parserModel.GETACK, nil), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
@@ -60,7 +60,7 @@ func (slaveParser *SlaveParser) ProcessArrayCommand(strCommand []string, numElem
 func (slaveParser *SlaveParser) processReplconfCommand(strCommand []string) (string, error) {
 	switch strings.ToLower(strCommand[1]) {
 	case parserModel.GETACK:
-		encodeArray := []string{parserModel.REPLCONF, parserModel.ACK_RESP, strconv.Itoa(int(storage.GetRedisStorageInsight().GetProcessedBytes()))}
+		encodeArray := []string{parserModel.REPLCONF, parserModel.ACK_RESP, strconv.Itoa(int(storage.GetRedisStorageInsight().Get()))}
 		respData := encodeArrayString(encodeArray)
 		return respData, nil
 	default:
@@ -114,5 +114,5 @@ func (slaveParser *SlaveParser) processGetCommand(strCommand []string) (string, 
 		return encodeNullBulkString(), nil
 	}
 
-	return encodeBulkString(value), nil
+	return encodeBulkString(fmt.Sprint(value)), nil
 }

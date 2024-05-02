@@ -31,6 +31,7 @@ const (
 	GETACK               = "getack"
 	WAIT                 = "wait"
 	ACK_RESP             = "ACK"
+	TYPE_COMMAND         = "type"
 )
 
 const (
@@ -41,6 +42,13 @@ const (
 )
 
 type CommandOutput struct {
-	ComamndName string
-	Response    string
+	CommandName  string
+	Response     string
+	NextCommands []string
+	Parameters   map[string]string
 }
+
+const (
+	WAIT_TIMEOUT        = "timeout"
+	WAIT_REPLICAS_COUNT = "replicas"
+)
