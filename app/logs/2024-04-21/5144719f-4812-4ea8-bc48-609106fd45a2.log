@@ -1,3 +1,0 @@
-{"level":"INFO","time":"2024-04-21T23:07:29.622+0530","msg":"slave:6380: \"Replicating data from localhost:6379\""}
-{"level":"ERROR","time":"2024-04-21T23:07:31.961+0530","msg":"slave:6380: \"dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.\""}
-{"level":"ERROR","time":"2024-04-21T23:07:31.961+0530","msg":"slave:6380: \"failed to connect to master server\""}
