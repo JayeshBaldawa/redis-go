@@ -19,6 +19,10 @@ func encodeNullBulkString() string {
 	return "$-1" + parserModel.STR_WRAPPER
 }
 
+func encodeNoneTypeString() string {
+	return encodeSimpleString("none")
+}
+
 func encodeSimpleString(resp string) string {
 	return parserModel.SIMPLE + resp + parserModel.STR_WRAPPER
 }
@@ -38,8 +42,12 @@ func encodeRDBResp() string {
 	return strings.TrimRight(encodeBulkString(string(emptyRdb)), "\r\n")
 }
 
-func respError(err error) string {
+func encodeErrorString(err error) string {
 	return parserModel.ERROR + " " + err.Error() + parserModel.STR_WRAPPER
+}
+
+func encodeIntegerString(resp int) string {
+	return fmt.Sprintf("%s%d%s", parserModel.INTEGER, resp, parserModel.STR_WRAPPER)
 }
 
 func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
@@ -57,13 +65,10 @@ func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
 	}
 }
 
-func formatCommandOutput(resp string, cmdName string) parserModel.CommandOutput {
+func formatCommandOutput(resp string, cmdName string, parameters map[string]string) parserModel.CommandOutput {
 	return parserModel.CommandOutput{
-		ComamndName: cmdName,
+		CommandName: cmdName,
 		Response:    resp,
+		Parameters:  parameters,
 	}
-}
-
-func encodeIntegerString(resp int) string {
-	return fmt.Sprintf("%s%d%s", parserModel.INTEGER, resp, parserModel.STR_WRAPPER)
 }

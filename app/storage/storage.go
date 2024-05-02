@@ -3,14 +3,14 @@ package storage
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
-	storageModel "github.com/codecrafters-io/redis-starter-go/app/models"
 )
 
 type Storage interface {
-	Set(key string, value string, expire int) error
+	Set(key string, value interface{}, expire int) error
 	Get(key string) (string, error)
 }
 
@@ -20,19 +20,17 @@ type InMemoryStorage struct {
 }
 
 type RedisStorageInsight struct {
-	insights sync.Map // ProcessedBytes
+	offset int64
 }
 
 var storage *InMemoryStorage
 var redisStorageInsight *RedisStorageInsight
+var commandsStorage *CommandsStorage
 
 func init() {
 	storage = NewInMemoryStorage()
 	redisStorageInsight = NewRedisStorageInsight()
-}
-
-func GetStorage() *InMemoryStorage {
-	return storage
+	commandsStorage = NewCommandsStorage()
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
@@ -44,8 +42,27 @@ func NewInMemoryStorage() *InMemoryStorage {
 
 func NewRedisStorageInsight() *RedisStorageInsight {
 	return &RedisStorageInsight{
-		insights: sync.Map{},
+		offset: 0,
 	}
+}
+
+func NewCommandsStorage() *CommandsStorage {
+	return &CommandsStorage{
+		stackOfCommands: make([]string, 10),
+		mutexCmds:       &sync.RWMutex{},
+	}
+}
+
+func GetRedisStorageInsight() *RedisStorageInsight {
+	return redisStorageInsight
+}
+
+func GetStorage() *InMemoryStorage {
+	return storage
+}
+
+func GetStackCmdStruct() *CommandsStorage {
+	return commandsStorage
 }
 
 func (s *InMemoryStorage) Set(key string, value string, expire time.Time) error {
@@ -56,7 +73,7 @@ func (s *InMemoryStorage) Set(key string, value string, expire time.Time) error 
 	return nil
 }
 
-func (s *InMemoryStorage) Get(key string) (string, error) {
+func (s *InMemoryStorage) Get(key string) (interface{}, error) {
 	// Check if key exists
 	value, ok := s.data.Load(key)
 	if !ok {
@@ -74,26 +91,41 @@ func (s *InMemoryStorage) Get(key string) (string, error) {
 		}
 	}
 
-	return value.(string), nil
+	return value, nil
 
 }
 
-func GetRedisStorageInsight() *RedisStorageInsight {
-	return redisStorageInsight
+type CommandsStorage struct {
+	// Stack of last 10 commands
+	stackOfCommands []string
+	mutexCmds       *sync.RWMutex
 }
 
-func (r *RedisStorageInsight) SetProcessedBytes(processedBytes int64) {
-	exitingBytes, ok := r.insights.Load(storageModel.PROCESSED_BYTES)
-	if ok {
-		processedBytes = processedBytes + exitingBytes.(int64)
+func (r *RedisStorageInsight) Set(offset int64) {
+	atomic.AddInt64(&r.offset, offset)
+}
+
+func (r *RedisStorageInsight) Get() int64 {
+	return atomic.LoadInt64(&r.offset)
+}
+
+func (c *CommandsStorage) AddCommand(command string) {
+	c.mutexCmds.Lock()
+	defer c.mutexCmds.Unlock()
+	c.stackOfCommands = append(c.stackOfCommands, command)
+	if len(c.stackOfCommands) > 10 {
+		c.stackOfCommands = c.stackOfCommands[1:]
 	}
-	r.insights.Store(storageModel.PROCESSED_BYTES, processedBytes)
 }
 
-func (r *RedisStorageInsight) GetProcessedBytes() int64 {
-	processedBytes, ok := r.insights.Load(storageModel.PROCESSED_BYTES)
-	if !ok {
-		return 0
-	}
-	return processedBytes.(int64)
+func (c *CommandsStorage) GetTopOfStack() string {
+	c.mutexCmds.RLock()
+	defer c.mutexCmds.RUnlock()
+	return c.stackOfCommands[len(c.stackOfCommands)-1]
+}
+
+func (c *CommandsStorage) ClearCommands() {
+	c.mutexCmds.Lock()
+	defer c.mutexCmds.Unlock()
+	c.stackOfCommands = make([]string, 10)
 }

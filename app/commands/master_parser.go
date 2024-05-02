@@ -24,41 +24,59 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 	command := strings.ToLower(strCommand[0])
 	switch command {
 	case parserModel.ECHO_COMMAND:
-		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND), nil
+		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND, nil), nil
 	case parserModel.PING_COMMAND:
-		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND), nil
+		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND, nil), nil
 	case parserModel.SET_COMMAND:
 		resp, err := masterParser.processSetCommand(strCommand, numElements)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.SET_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.SET_COMMAND, nil), nil
 	case parserModel.GET_COMMAND:
 		resp, err := masterParser.processGetCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.GET_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.GET_COMMAND, nil), nil
 	case parserModel.INFO_COMMAND:
 		resp, err := masterParser.processInfoCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.INFO_COMMAND), nil
+		return formatCommandOutput(resp, parserModel.INFO_COMMAND, nil), nil
 	case parserModel.REPLCONF:
 		resp, err := masterParser.checkReplconCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.REPLCONF), nil
+		return formatCommandOutput(resp, parserModel.REPLCONF, nil), nil
 	case parserModel.PYSNC:
-		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC), nil
+		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC, nil), nil
 	case parserModel.WAIT:
-		_, err := strconv.Atoi(strCommand[1])
+
+		replicaServersCount, err := strconv.Atoi(strCommand[1])
 		if err != nil {
 			return parserModel.CommandOutput{}, errors.New("invalid format for WAIT command")
 		}
-		return formatCommandOutput(encodeIntegerString(replicaServersCount), parserModel.WAIT), nil
+
+		timeOut, err := strconv.Atoi(strCommand[2])
+		if err != nil {
+			return parserModel.CommandOutput{}, errors.New("invalid format for WAIT command")
+		}
+
+		mapReplicaServers := map[string]string{
+			parserModel.WAIT_TIMEOUT:        fmt.Sprint(timeOut),
+			parserModel.WAIT_REPLICAS_COUNT: fmt.Sprint(replicaServersCount),
+		}
+
+		return formatCommandOutput(encodeIntegerString(replicaServersCount), parserModel.WAIT, mapReplicaServers), nil
+	case parserModel.TYPE_COMMAND:
+		typeOfValue, err := processTypeCommand(strCommand[1])
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(typeOfValue, parserModel.TYPE_COMMAND, nil), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
@@ -121,7 +139,7 @@ func (masterParser *MasterParser) processGetCommand(strCommand []string) (string
 		return encodeNullBulkString(), nil
 	}
 
-	return encodeBulkString(value), nil
+	return encodeBulkString(fmt.Sprint(value)), nil
 }
 
 func (masterParser *MasterParser) processInfoCommand(strCommand []string) (string, error) {
@@ -136,4 +154,24 @@ func getCommandParameter(strCommand []string, index int) string {
 		return ""
 	}
 	return strCommand[index]
+}
+
+func processTypeCommand(key string) (string, error) {
+	value, err := storage.GetStorage().Get(key)
+	if err != nil {
+		return "", err
+	}
+
+	if value == "" {
+		return encodeNoneTypeString(), nil
+	}
+
+	switch value.(type) {
+	case string:
+		return encodeSimpleString("string"), nil
+	case int:
+		return encodeSimpleString("integer"), nil
+	default:
+		return encodeSimpleString("none"), nil
+	}
 }
