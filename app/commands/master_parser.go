@@ -25,36 +25,42 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 	switch command {
 	case parserModel.ECHO_COMMAND:
 		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND, nil), nil
+
 	case parserModel.PING_COMMAND:
 		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND, nil), nil
+
 	case parserModel.SET_COMMAND:
 		resp, err := masterParser.processSetCommand(strCommand, numElements)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
 		return formatCommandOutput(resp, parserModel.SET_COMMAND, nil), nil
+
 	case parserModel.GET_COMMAND:
 		resp, err := masterParser.processGetCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
 		return formatCommandOutput(resp, parserModel.GET_COMMAND, nil), nil
+
 	case parserModel.INFO_COMMAND:
 		resp, err := masterParser.processInfoCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
 		return formatCommandOutput(resp, parserModel.INFO_COMMAND, nil), nil
+
 	case parserModel.REPLCONF:
 		resp, err := masterParser.checkReplconCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
 		return formatCommandOutput(resp, parserModel.REPLCONF, nil), nil
+
 	case parserModel.PYSNC:
 		return formatCommandOutput(masterParser.handlePysncCommand(), parserModel.PYSNC, nil), nil
-	case parserModel.WAIT:
 
+	case parserModel.WAIT:
 		replicaServersCount, err := strconv.Atoi(strCommand[1])
 		if err != nil {
 			return parserModel.CommandOutput{}, errors.New("invalid format for WAIT command")
@@ -71,12 +77,20 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 		}
 
 		return formatCommandOutput(encodeIntegerString(replicaServersCount), parserModel.WAIT, mapReplicaServers), nil
+
 	case parserModel.TYPE_COMMAND:
 		typeOfValue, err := processTypeCommand(strCommand[1])
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
 		return formatCommandOutput(typeOfValue, parserModel.TYPE_COMMAND, nil), nil
+	case parserModel.XADD_COMMAND:
+		resp, err := masterParser.processSetStream(strCommand, numElements)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.XADD_COMMAND, nil), nil
+
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
@@ -163,6 +177,11 @@ func processTypeCommand(key string) (string, error) {
 	}
 
 	if value == "" {
+		// Check if key exists in stream storage
+		stream := storage.GetStreamStorage().GetStream(key)
+		if len(stream) > 0 {
+			return encodeSimpleString("stream"), nil
+		}
 		return encodeNoneTypeString(), nil
 	}
 
@@ -174,4 +193,23 @@ func processTypeCommand(key string) (string, error) {
 	default:
 		return encodeSimpleString("none"), nil
 	}
+}
+
+func (masterParser *MasterParser) processSetStream(strCommand []string, numElements int) (string, error) {
+	if numElements < 3 {
+		return "", errors.New("invalid format for XADD command")
+	}
+
+	keyForStream := strCommand[1] // Stream key
+	entryId := strCommand[2]      // Entry id
+
+	attributes := make(map[string]interface{})
+
+	for i := 3; i < numElements; i += 2 {
+		attributes[strCommand[i]] = strCommand[i+1]
+	}
+
+	storage.GetStreamStorage().AddEntry(entryId, attributes, keyForStream)
+
+	return encodeBulkString(entryId), nil
 }
