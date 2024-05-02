@@ -32,6 +32,7 @@ const (
 	WAIT                 = "wait"
 	ACK_RESP             = "ACK"
 	TYPE_COMMAND         = "type"
+	XADD_COMMAND         = "xadd"
 )
 
 const (
