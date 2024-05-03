@@ -1,5 +1,7 @@
 package models
 
+import "net"
+
 const (
 	SIMPLE  = "+"
 	ERROR   = "-ERR "
@@ -38,6 +40,11 @@ const (
 )
 
 const (
+	XREAD_COMMAND_BLOCK  = "block"
+	XREAD_COMMAND_DOLLAR = "$"
+)
+
+const (
 	EX   = "ex"   // Seconds
 	PX   = "px"   // Milliseconds
 	EXAT = "exat" // Unix timestamp in seconds
@@ -48,7 +55,13 @@ type CommandOutput struct {
 	CommandName  string
 	Response     string
 	NextCommands []string
+	IsStreaming  bool
 	Parameters   map[string]string
+}
+
+type CommandInput struct {
+	SplittedCommand []string
+	Conn            net.Conn
 }
 
 const (

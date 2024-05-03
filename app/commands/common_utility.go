@@ -71,13 +71,15 @@ func encodeStreamArrayString(resps []storage.StreamEntry) string {
 	return bufferString.String()
 }
 
-func encodeXreadStreamArrayString(resps map[string][]storage.StreamEntry) string {
+func encodeXreadStreamArrayString(resps map[string][]storage.StreamEntry, orderOfKeys []string) string {
 
 	bufferString := bytes.NewBufferString(parserModel.ARRAYS)
 	bufferString.WriteString(strconv.Itoa(len(resps)))
 	bufferString.WriteString(parserModel.STR_WRAPPER)
 
-	for key, resp := range resps {
+	for _, key := range orderOfKeys {
+
+		resp := resps[key]
 
 		bufferString.WriteString(parserModel.ARRAYS + "2" + parserModel.STR_WRAPPER + encodeBulkString(key))
 		bufferString.WriteString(parserModel.ARRAYS + strconv.Itoa(len(resp)) + parserModel.STR_WRAPPER)
@@ -112,10 +114,11 @@ func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
 	}
 }
 
-func formatCommandOutput(resp string, cmdName string, parameters map[string]string) parserModel.CommandOutput {
+func formatCommandOutput(resp string, cmdName string, parameters map[string]string, isStreaming bool) parserModel.CommandOutput {
 	return parserModel.CommandOutput{
 		CommandName: cmdName,
 		Response:    resp,
 		Parameters:  parameters,
+		IsStreaming: isStreaming,
 	}
 }

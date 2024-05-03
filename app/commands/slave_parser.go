@@ -14,7 +14,10 @@ import (
 
 type SlaveParser struct{}
 
-func (slaveParser *SlaveParser) ProcessArrayCommand(strCommand []string, numElements int) (parserModel.CommandOutput, error) {
+func (slaveParser *SlaveParser) ProcessArrayCommand(input parserModel.CommandInput, numElements int) (parserModel.CommandOutput, error) {
+
+	strCommand := input.SplittedCommand
+
 	// Ensure at least one command is provided
 	if len(strCommand) < 1 {
 		return parserModel.CommandOutput{}, errors.New("no command provided")
@@ -25,33 +28,33 @@ func (slaveParser *SlaveParser) ProcessArrayCommand(strCommand []string, numElem
 
 	switch command {
 	case parserModel.ECHO_COMMAND:
-		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND, nil), nil
+		return formatCommandOutput(encodeBulkString(getCommandParameter(strCommand, 1)), parserModel.ECHO_COMMAND, nil, false), nil
 	case parserModel.PING_COMMAND:
-		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND, nil), nil
+		return formatCommandOutput(encodeSimpleString("PONG"), parserModel.PING_COMMAND, nil, false), nil
 	case parserModel.INFO_COMMAND:
 		resp, err := slaveParser.processInfoCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.INFO_COMMAND, nil), nil
+		return formatCommandOutput(resp, parserModel.INFO_COMMAND, nil, false), nil
 	case parserModel.SET_COMMAND:
 		resp, err := slaveParser.processSetCommand(strCommand, numElements)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.SET_COMMAND, nil), nil
+		return formatCommandOutput(resp, parserModel.SET_COMMAND, nil, false), nil
 	case parserModel.GET_COMMAND:
 		resp, err := slaveParser.processGetCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.GET_COMMAND, nil), nil
+		return formatCommandOutput(resp, parserModel.GET_COMMAND, nil, false), nil
 	case parserModel.REPLCONF:
 		resp, err := slaveParser.processReplconfCommand(strCommand)
 		if err != nil {
 			return parserModel.CommandOutput{}, err
 		}
-		return formatCommandOutput(resp, parserModel.GETACK, nil), nil
+		return formatCommandOutput(resp, parserModel.GETACK, nil, false), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}

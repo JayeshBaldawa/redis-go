@@ -2,12 +2,15 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	events "github.com/codecrafters-io/redis-starter-go/app/events"
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
+	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
 )
 
 type StreamEntry struct {
@@ -53,6 +56,15 @@ func (s *StreamStorage) AddEntry(EntryId string, attributes map[string]interface
 	}
 
 	s.Stream[StreamKey][newEntryId] = entry
+
+	// NewEvent
+	eventData := events.Event{
+		Topic: parserModel.XREAD_TOPIC + "_" + StreamKey,
+		Data:  entry,
+	}
+
+	// Publish the new entry to the subscribers
+	events.GetPubSub().Publish(eventData)
 
 	return newEntryId, nil
 }
@@ -336,4 +348,120 @@ func (s *StreamStorage) XReadStreams(xReadEntries map[string]string) map[string]
 	}
 
 	return entries
+}
+
+func isEntryInRange(newEntryId string, existingEntryId string) (bool, error) {
+	newParts := strings.Split(newEntryId, "-")
+	existingParts := strings.Split(existingEntryId, "-")
+
+	if len(newParts) != 2 || len(existingParts) != 2 {
+		return false, errors.New("invalid entry ID format")
+	}
+
+	newTimestamp, err := strconv.Atoi(newParts[0])
+	if err != nil {
+		return false, errors.New("invalid timestamp in entry ID")
+	}
+
+	newSequence, err := strconv.Atoi(newParts[1])
+	if err != nil {
+		return false, errors.New("invalid sequence number in entry ID")
+	}
+
+	existingTimestamp, err := strconv.Atoi(existingParts[0])
+	if err != nil {
+		return false, errors.New("invalid timestamp in entry ID")
+	}
+
+	existingSequence, err := strconv.Atoi(existingParts[1])
+	if err != nil {
+		return false, errors.New("invalid sequence number in entry ID")
+	}
+
+	if newTimestamp < existingTimestamp || (newTimestamp == existingTimestamp && newSequence <= existingSequence) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (s *StreamStorage) XReadStreamsBlock(streamKeyName string, entryIDName string, timeout int, streamTopicName ...string) (map[string][]StreamEntry, error) {
+
+	topicSubscribed := parserModel.XREAD_TOPIC + "_" + streamKeyName
+	subChan := events.GetPubSub().Subscribe(topicSubscribed)
+	var entries map[string][]StreamEntry = make(map[string][]StreamEntry)
+
+	defer func() {
+		events.GetPubSub().Unsubscribe(topicSubscribed, subChan)
+		if r := recover(); r != nil {
+			log.LogError(errors.New("panic occurred"))
+		}
+		if len(streamTopicName) > 0 {
+			events.GetPubSub().Publish(events.Event{
+				Topic: streamTopicName[0],
+				Data:  "STOP",
+			})
+		}
+	}()
+
+	// Max Timeout value is 2^31-1 milliseconds
+	if timeout < 0 {
+		return nil, errors.New("timeout value should be greater than 0")
+	}
+
+	if timeout > 2147483647 {
+		return nil, errors.New("timeout value should be less than 2147483647")
+	}
+
+	// Wait for new entries or timeout
+	timeoutTx := time.After(time.Duration(timeout) * time.Millisecond)
+
+	for {
+		select {
+		case <-timeoutTx:
+			return entries, nil // Return collected entries on timeout
+
+		case event := <-subChan:
+			log.LogInfo(fmt.Sprintf("Received event: %v", event))
+			// Process the received event
+			parts := strings.Split(event.Topic, "_")
+			if len(parts) < 3 {
+				log.LogError(errors.New("invalid topic format"))
+				continue // Invalid topic format, skip processing
+			}
+			streamKey := parts[2]
+			newStreamEntry, ok := event.Data.(StreamEntry)
+			if !ok {
+				log.LogError(errors.New("invalid event data format"))
+				continue // Invalid event data format, skip processing
+			}
+
+			var isInRange bool
+			var err error
+
+			if entryIDName == parserModel.XREAD_COMMAND_DOLLAR {
+				isInRange = true
+			} else {
+				// Check if received entry is greater than the entryIDName
+				isInRange, err = isEntryInRange(newStreamEntry.ID, entryIDName)
+				if err != nil {
+					log.LogError(err)
+					continue
+				}
+			}
+
+			if isInRange {
+				entries[streamKey] = append(entries[streamKey], newStreamEntry)
+				if len(streamTopicName) > 0 {
+					// Publish the received entry to the streamTopicName
+					log.LogInfo(fmt.Sprintf("Publishing event to topic: %v", streamTopicName[0]))
+					eventData := events.Event{
+						Topic: streamTopicName[0],
+						Data:  newStreamEntry,
+					}
+					events.GetPubSub().Publish(eventData)
+				}
+			}
+		}
+	}
 }

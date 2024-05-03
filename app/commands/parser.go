@@ -18,7 +18,7 @@ import (
 )
 
 type Parser interface {
-	ProcessArrayCommand(strCommand []string, numElements int) (parserModel.CommandOutput, error)
+	ProcessArrayCommand(input parserModel.CommandInput, numElements int) (parserModel.CommandOutput, error)
 }
 
 var replicaServers sync.Map
@@ -69,7 +69,7 @@ func HandleCommand(strCommand string, conn net.Conn) (isSlaveReq bool) {
 
 		switch startChar {
 		case parserModel.ARRAYS:
-			resp, err = processArrayCommand(parserObj, splittedStrs)
+			resp, err = processArrayCommand(parserObj, splittedStrs, conn)
 		default:
 			err = errors.New("invalid command")
 			log.LogInfo(err.Error())
@@ -103,8 +103,12 @@ func HandleCommand(strCommand string, conn net.Conn) (isSlaveReq bool) {
 			go writeBackToReplicaServers(strCommand)
 		}
 
-		if shouldWriteBack(resp.CommandName) {
+		if shouldWriteBack(resp.CommandName) && !resp.IsStreaming {
 			WriteBackToConnection(conn, resp)
+		}
+
+		if resp.IsStreaming {
+
 		}
 
 		// Increment the processed bytes
@@ -178,7 +182,7 @@ func isSlaveConnectionRequest(cmd string) bool {
 	return false
 }
 
-func processArrayCommand(parser Parser, splittedCommand []string) (parserModel.CommandOutput, error) {
+func processArrayCommand(parser Parser, splittedCommand []string, conn net.Conn) (parserModel.CommandOutput, error) {
 	// Get the number of elements in the array
 	numElements, err := strconv.Atoi(splittedCommand[0][1:])
 	if err != nil || numElements == 0 {
@@ -193,8 +197,13 @@ func processArrayCommand(parser Parser, splittedCommand []string) (parserModel.C
 		startIndex += 2
 	}
 
+	inputCmd := parserModel.CommandInput{
+		SplittedCommand: arrayElements,
+		Conn:            conn,
+	}
+
 	// Process the array command
-	return parser.ProcessArrayCommand(arrayElements, numElements)
+	return parser.ProcessArrayCommand(inputCmd, numElements)
 }
 
 func CheckConnectionWithMaster() (bool, net.Conn) {
