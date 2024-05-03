@@ -2,7 +2,7 @@ package models
 
 const (
 	SIMPLE  = "+"
-	ERROR   = "-"
+	ERROR   = "-ERR "
 	BULK    = "$"
 	ARRAYS  = "*"
 	INTEGER = ":"
@@ -33,6 +33,7 @@ const (
 	ACK_RESP             = "ACK"
 	TYPE_COMMAND         = "type"
 	XADD_COMMAND         = "xadd"
+	XRANGE_COMMAND       = "xrange"
 )
 
 const (
