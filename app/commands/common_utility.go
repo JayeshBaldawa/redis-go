@@ -9,6 +9,7 @@ import (
 	"time"
 
 	parserModel "github.com/codecrafters-io/redis-starter-go/app/models"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 func encodeBulkString(resp string) string {
@@ -43,11 +44,31 @@ func encodeRDBResp() string {
 }
 
 func encodeErrorString(err error) string {
-	return parserModel.ERROR + " " + err.Error() + parserModel.STR_WRAPPER
+	return parserModel.ERROR + err.Error() + parserModel.STR_WRAPPER
 }
 
 func encodeIntegerString(resp int) string {
 	return fmt.Sprintf("%s%d%s", parserModel.INTEGER, resp, parserModel.STR_WRAPPER)
+}
+
+func encodeStreamArrayString(resps []storage.StreamEntry) string {
+	// Outer Array Specifying how many responses are there
+	bufferString := bytes.NewBufferString(parserModel.ARRAYS)
+	bufferString.WriteString(strconv.Itoa(len(resps)))
+	bufferString.WriteString(parserModel.STR_WRAPPER)
+	for _, resp := range resps {
+		// Create Array of Attributes
+		attribs := make([]string, 0)
+		for key, value := range resp.Attributes {
+			attribs = append(attribs, key, fmt.Sprintf("%v", value))
+		}
+		// Get encode Array for key
+		bufferString.WriteString("*2" + parserModel.STR_WRAPPER + encodeBulkString(resp.ID))
+
+		// Create Array of Stream Entry
+		bufferString.WriteString(encodeArrayString(attribs))
+	}
+	return bufferString.String()
 }
 
 func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
