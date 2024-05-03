@@ -325,3 +325,15 @@ func (s *StreamStorage) GetLastEntryID(streamKey string) string {
 	entryIDs := entries.([]string)
 	return entryIDs[len(entryIDs)-1]
 }
+
+func (s *StreamStorage) XReadStreams(xReadEntries map[string]string) map[string][]StreamEntry {
+
+	var entries map[string][]StreamEntry = make(map[string][]StreamEntry)
+
+	for streamKeyName, entryID := range xReadEntries {
+
+		entries[streamKeyName] = s.GetRange(streamKeyName, entryID, "+")
+	}
+
+	return entries
+}

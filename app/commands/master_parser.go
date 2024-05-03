@@ -98,6 +98,13 @@ func (masterParser *MasterParser) ProcessArrayCommand(strCommand []string, numEl
 		}
 		return formatCommandOutput(resp, parserModel.XRANGE_COMMAND, nil), nil
 
+	case parserModel.XREAD_COMMAND:
+		resp, err := masterParser.processXReadCommand(strCommand)
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.XREAD_COMMAND, nil), nil
+
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
@@ -240,4 +247,24 @@ func (masterParser *MasterParser) processXRangeCommand(strCommand []string) (str
 	}
 
 	return encodeStreamArrayString(entries), nil
+}
+
+func (masterParser *MasterParser) processXReadCommand(strCommand []string) (string, error) {
+	if len(strCommand) < 4 {
+		return "", errors.New("invalid format for XREAD command")
+	}
+
+	streams := make(map[string]string)
+	numToRun := (len(strCommand) - 2) / 2
+
+	for i := 0; i < numToRun; i++ {
+		streams[strCommand[i+2]] = strCommand[i+2+numToRun]
+	}
+
+	entries := storage.GetStreamStorage().XReadStreams(streams)
+	if len(entries) == 0 {
+		return encodeNullBulkString(), nil
+	}
+
+	return encodeXreadStreamArrayString(entries), nil
 }
