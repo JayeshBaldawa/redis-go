@@ -34,6 +34,7 @@ const (
 	TYPE_COMMAND         = "type"
 	XADD_COMMAND         = "xadd"
 	XRANGE_COMMAND       = "xrange"
+	XREAD_COMMAND        = "xread"
 )
 
 const (

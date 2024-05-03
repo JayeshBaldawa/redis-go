@@ -71,6 +71,32 @@ func encodeStreamArrayString(resps []storage.StreamEntry) string {
 	return bufferString.String()
 }
 
+func encodeXreadStreamArrayString(resps map[string][]storage.StreamEntry) string {
+
+	bufferString := bytes.NewBufferString(parserModel.ARRAYS)
+	bufferString.WriteString(strconv.Itoa(len(resps)))
+	bufferString.WriteString(parserModel.STR_WRAPPER)
+
+	for key, resp := range resps {
+
+		bufferString.WriteString(parserModel.ARRAYS + "2" + parserModel.STR_WRAPPER + encodeBulkString(key))
+		bufferString.WriteString(parserModel.ARRAYS + strconv.Itoa(len(resp)) + parserModel.STR_WRAPPER)
+
+		for _, entry := range resp {
+
+			bufferString.WriteString("*2" + parserModel.STR_WRAPPER + encodeBulkString(entry.ID))
+
+			attribs := make([]string, 0)
+			for key, value := range entry.Attributes {
+				attribs = append(attribs, key, fmt.Sprintf("%v", value))
+			}
+			bufferString.WriteString(encodeArrayString(attribs))
+		}
+	}
+
+	return bufferString.String()
+}
+
 func getExpiryTimeInUTC(expire int, Timetype string) time.Time {
 	switch strings.ToLower(Timetype) {
 	case parserModel.EX:
