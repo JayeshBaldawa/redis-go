@@ -5,6 +5,8 @@ type RedisServer struct {
 	replicaHost string
 	replicaPort int
 	serverType  string
+	RDBFileDir  string
+	RDBFileName string
 }
 
 const (
@@ -25,6 +27,8 @@ func init() {
 		replicaHost: "",
 		replicaPort: 0,
 		serverType:  MASTER_SERVER,
+		RDBFileDir:  "/tmp/",
+		RDBFileName: "dump.rdb",
 	}
 }
 
@@ -74,4 +78,20 @@ func (r *RedisServer) IsSlave() bool {
 
 func GetReadTimeout() int {
 	return READ_TIMEOUT
+}
+
+func (r *RedisServer) GetRDBFileDir() string {
+	return r.RDBFileDir
+}
+
+func (r *RedisServer) GetRDBFileName() string {
+	return r.RDBFileName
+}
+
+func (r *RedisServer) SetRDBFileDir(dir string) {
+	r.RDBFileDir = dir
+}
+
+func (r *RedisServer) SetRDBFileName(name string) {
+	r.RDBFileName = name
 }

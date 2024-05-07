@@ -10,6 +10,7 @@ import (
 
 	commands "github.com/codecrafters-io/redis-starter-go/app/commands"
 	log "github.com/codecrafters-io/redis-starter-go/app/logger"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 	config "github.com/codecrafters-io/redis-starter-go/app/utility"
 )
 
@@ -93,6 +94,7 @@ func handleRequest(conn net.Conn) {
 }
 
 func readArgsPassed() {
+	log.InitLogger()
 	// Get Redis server configuration from the application's configuration
 	redisServerConfig := config.GetRedisServerConfig()
 
@@ -122,7 +124,6 @@ func readArgsPassed() {
 			redisServerConfig.SetReplicaPort(replicaPort)
 
 			// Initialize logger and log the replication configuration
-			log.InitLogger()
 			log.LogInfo(fmt.Sprintf("Replicating data from %s:%d", replicaHost, replicaPort))
 
 			// Check connection with the master server
@@ -134,12 +135,22 @@ func readArgsPassed() {
 
 			// Handle the connection with the master server asynchronously
 			go handleRequest(conn)
-		}
-	}
+		case "--dir":
+			// Increment i to move to the next argument, which should be the directory path
+			i++
+			redisServerConfig.SetRDBFileDir(args[i])
+		case "--dbfilename":
+			// Increment i to move to the next argument, which should be the RDB file name
+			i++
+			redisServerConfig.SetRDBFileName(args[i])
 
-	// If the server type is master, initialize the logger
-	if redisServerConfig.GetServerType() == config.MASTER_SERVER {
-		log.InitLogger()
+			// Load the RDB file
+			err := storage.GetRDBStorage().LoadRDBFile()
+			if err != nil {
+				log.LogError(fmt.Errorf("failed to load RDB file: %s", err))
+				os.Exit(1)
+			}
+		}
 	}
 }
 

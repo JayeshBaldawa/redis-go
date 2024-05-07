@@ -117,6 +117,19 @@ func (masterParser *MasterParser) ProcessArrayCommand(input parserModel.CommandI
 		}
 		return formatCommandOutput(resp, parserModel.XREAD_COMMAND, nil, isStreaming), nil
 
+	case parserModel.CONFIG_COMMAND:
+		if len(strCommand) < 2 {
+			return parserModel.CommandOutput{}, errors.New("invalid format for CONFIG command")
+		}
+		resp, err := masterParser.ProcessConfigCommand(strCommand[1:])
+		if err != nil {
+			return parserModel.CommandOutput{}, err
+		}
+		return formatCommandOutput(resp, parserModel.CONFIG_COMMAND, nil, false), nil
+
+	case parserModel.KEYS_COMMAND:
+		keys := storage.GetStorage().GetKeys()
+		return formatCommandOutput(encodeArrayString(keys), parserModel.KEYS_COMMAND, nil, false), nil
 	default:
 		return parserModel.CommandOutput{}, errors.New("unknown command")
 	}
@@ -313,7 +326,7 @@ func handleXreadBlockCommand(strCommand []string, conn net.Conn) (string, bool, 
 	entryId := strCommand[5]
 
 	if timeout == 0 {
-		go StreamXReadBlock(streamKey, entryId, timeout, conn)
+		go StreamXReadBlock(streamKey, entryId, conn)
 		return "", true, nil
 	}
 
@@ -330,7 +343,7 @@ func handleXreadBlockCommand(strCommand []string, conn net.Conn) (string, bool, 
 	return encodeXreadStreamArrayString(entries, []string{streamKey}), false, nil
 }
 
-func StreamXReadBlock(streamKey string, entryId string, timeout int, conn net.Conn) {
+func StreamXReadBlock(streamKey string, entryId string, conn net.Conn) {
 
 	topic := fmt.Sprintf("%s:%s:%s", parserModel.XREAD_STREAM_TOPIC, streamKey, uuid.New().String())
 
@@ -341,9 +354,7 @@ func StreamXReadBlock(streamKey string, entryId string, timeout int, conn net.Co
 
 	defaultTimeoutMs := 1000000 // 16666.6667
 
-	timeout = defaultTimeoutMs
-
-	go storage.GetStreamStorage().XReadStreamsBlock(streamKey, entryId, timeout, topic)
+	go storage.GetStreamStorage().XReadStreamsBlock(streamKey, entryId, defaultTimeoutMs, topic)
 
 	for {
 		select {
@@ -365,4 +376,15 @@ func StreamXReadBlock(streamKey string, entryId string, timeout int, conn net.Co
 		}
 	}
 
+}
+
+func (m *MasterParser) ProcessConfigCommand(strCommand []string) (string, error) {
+	switch strings.ToLower(strCommand[1]) {
+	case parserModel.DIR_NAME:
+		return encodeArrayString([]string{parserModel.DIR_NAME, config.GetRedisServerConfig().GetRDBFileDir()}), nil
+	case parserModel.DB_FILENAME:
+		return encodeArrayString([]string{parserModel.DB_FILENAME, config.GetRedisServerConfig().GetRDBFileName()}), nil
+	}
+
+	return "", errors.New("invalid format for CONFIG command")
 }
