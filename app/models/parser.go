@@ -37,6 +37,10 @@ const (
 	XADD_COMMAND         = "xadd"
 	XRANGE_COMMAND       = "xrange"
 	XREAD_COMMAND        = "xread"
+	CONFIG_COMMAND       = "config"
+	DIR_NAME             = "dir"
+	DB_FILENAME          = "dbfilename"
+	KEYS_COMMAND         = "keys"
 )
 
 const (

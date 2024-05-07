@@ -11,6 +11,7 @@ import (
 type Storage interface {
 	Set(key string, value interface{}, expire int) error
 	Get(key string) (string, error)
+	GetKeys() []string
 }
 
 type InMemoryStorage struct {
@@ -81,4 +82,13 @@ func (s *InMemoryStorage) Get(key string) (interface{}, error) {
 
 	return value, nil
 
+}
+
+func (s *InMemoryStorage) GetKeys() []string {
+	keys := make([]string, 0)
+	s.data.Range(func(key, value interface{}) bool {
+		keys = append(keys, key.(string))
+		return true
+	})
+	return keys
 }

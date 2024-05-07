@@ -49,8 +49,14 @@ func InitLogger() {
 	_ = os.Mkdir("logs", 0755)
 	_ = os.Mkdir("logs/"+timeStr, 0755)
 
+	configType := config.GetRedisServerConfig().GetServerType()
+
+	if configType == "" {
+		configType = "server_type"
+	}
+
 	// Create file name
-	fileName := "logs/" + timeStr + "/" + config.GetRedisServerConfig().GetServerType() + "_" + fmt.Sprint(time.Now().Hour()) + ".log"
+	fileName := "logs/" + timeStr + "/" + configType + "_" + fmt.Sprint(time.Now().Hour()) + ".log"
 
 	// Create file writer
 	file, _ := os.Create(fileName)
